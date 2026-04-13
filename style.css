@@ -479,3 +479,58 @@ header h1 { font-size: 26px; color: var(--accent); margin: 0; font-weight: 900; 
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- 모바일 최적화 (768px 이하) --- */
+@media (max-width: 768px) {
+    /* 1. 전체 여백 조정 */
+    body { padding: 10px; font-size: 14px; }
+    
+    /* 2. 대시보드(4칸짜리 통계)를 2열로 변경 */
+    .dash { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 8px; 
+    }
+    
+    /* 3. 입력창들을 가로 한 칸씩 꽉 차게 변경 */
+    .input-row { 
+        display: flex; 
+        flex-direction: column; 
+        gap: 10px; 
+    }
+    
+    .input-box { width: 100% !important; }
+
+    /* 4. 상단 탭 메뉴가 넘치지 않게 스크롤 가능하게 변경 */
+    .tab-container {
+        display: flex;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 5px;
+        -webkit-overflow-scrolling: touch; /* 부드러운 스크롤 */
+    }
+    
+    .tab-btn { flex: 0 0 auto; }
+
+    /* 5. 버튼 크기를 손가락으로 누르기 편하게 키우기 */
+    .btn-action { 
+        width: 100%; 
+        padding: 15px; 
+        font-size: 16px; 
+        margin-bottom: 8px; 
+    }
+    
+    /* 6. 부수입 판매 칸 조정 (아이템/수량/금액 한 줄씩) */
+    .sell-row {
+        flex-direction: column;
+        gap: 5px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .sell-row select, .sell-row input {
+        width: 100% !important;
+        height: 40px;
+    }
+}
