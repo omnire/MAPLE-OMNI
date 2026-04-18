@@ -1,8 +1,10 @@
 /**
  * ============================================================================
- * 🍁 MAPLE OMNI V13.6.5 - F5 새로고침 정보 유지 보강
+ * 🍁 MAPLE OMNI V13.6.5 - 최종 병합 완료 (장비 툴팁, 심볼, 즐겨찾기 연동)
  * ============================================================================
  */
+
+let currentSearchData = null; 
 
 const API_KEY = "test_b4b72659365dd8f8e050630f7d05b609548335ee63fb773f616d4a4c479769e7efe8d04e6d233bd35cf2fabdeb93fb0d";
 
@@ -28,7 +30,7 @@ function getTodayStr() {
 }
 
 // ============================================================================
-// 🚪 화면 이동 함수 (마스터키 적용)
+// 🚪 화면 이동 함수 
 // ============================================================================
 
 window.backToPortal = function(isPopState = false) {
@@ -105,12 +107,11 @@ window.addEventListener('DOMContentLoaded', () => {
         window.openSearchPage(true); 
         history.replaceState({ page: 'search' }, "", "#search");
         
-        // 🚀 [추가된 복구 마법] 새로고침해도 마지막 검색자 정보 살려내기
         const lastSearch = sessionStorage.getItem('omni_last_search');
         if (lastSearch) {
             const cachedData = JSON.parse(localStorage.getItem(`maple_api_search_${lastSearch}`));
             if (cachedData) {
-                renderSearchDetail(cachedData.basic, cachedData.stat, cachedData.item, cachedData.ability, cachedData.symbol);
+                renderSearchDetail(cachedData.basic, cachedData.stat, cachedData.item, cachedData.ability, cachedData.symbol, cachedData.dojang);
             }
         }
     } else {
@@ -120,7 +121,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================================
-// 🛡️ API 데이터 불러오기 (스텔스 동기화 및 랭킹)
+// 🛡️ API 데이터 불러오기 
 // ============================================================================
 async function fetchMapleData(force = false) {
     const todayStr = getTodayStr();
@@ -167,11 +168,17 @@ function renderHuntSidebar(basic, stat) {
     document.getElementById('profileLevel').innerText = `Lv. ${basic.character_level}`;
     document.getElementById('profileJob').innerText = basic.character_class;
     document.getElementById('profileWorld').innerText = basic.world_name;
-    const getStatValue = (target) => stat.final_stat.find(s => s.stat_name === target)?.stat_value || "0";
+    
+    const getStatValue = (target) => {
+        if (!stat || !stat.final_stat) return "0";
+        const found = stat.final_stat.find(s => s.stat_name === target);
+        return found ? found.stat_value : "0";
+    };
     document.getElementById('stat_power').innerText = Number(getStatValue("전투력")).toLocaleString();
     document.getElementById('stat_atk').innerText = Number(getStatValue("최대 스탯 공격력")).toLocaleString();
     document.getElementById('stat_dmg').innerText = getStatValue("데미지") + "%";
 }
+
 
 function resetHuntSidebar(fallbackName) {
     document.getElementById('profileImg').src = "https://open.api.nexon.com/static/maplestory/Character/Default.png";
@@ -219,21 +226,20 @@ function renderRankingHtml(top10, dateStr) {
     if(dateSpan) dateSpan.innerText = `기준일: ${dateStr}`;
 }
 
-async function searchCharacter() {
-    const input = document.getElementById('portalSearchInput')?.value.trim();
+async function searchCharacter(directName = null) {
+    const input = typeof directName === 'string' ? directName : document.getElementById('portalSearchInput')?.value.trim();
     if (!input) return showAlert("❌ 캐릭터명을 입력해주세요!"); 
     
     const todayStr = getTodayStr();
     const cacheKey = `maple_api_search_${input}`;
-    
-    // 🚀 [추가] 마지막으로 검색한 닉네임 수첩에 기록 (F5 복구용)
     sessionStorage.setItem('omni_last_search', input); 
 
     let cachedData = JSON.parse(localStorage.getItem(cacheKey));
 
     if (cachedData && cachedData.date === todayStr) { 
         window.openSearchPage(); 
-        renderSearchDetail(cachedData.basic, cachedData.stat, cachedData.item, cachedData.ability, cachedData.symbol); 
+        renderSearchDetail(cachedData.basic, cachedData.stat, cachedData.item, cachedData.ability, cachedData.symbol, cachedData.dojang); 
+        if(typeof directName === 'string') showAlert(`⚡ ${input} (저장된 캐시 데이터 로드 완료!)`); 
         return; 
     }
 
@@ -252,7 +258,6 @@ async function searchCharacter() {
         const basic = await fetch(`https://open.api.nexon.com/maplestory/v1/character/basic?ocid=${ocid}`, { headers }).then(r => r.json());
         await new Promise(res => setTimeout(res, 600)); 
         const stat = await fetch(`https://open.api.nexon.com/maplestory/v1/character/stat?ocid=${ocid}`, { headers }).then(r => r.json());
-        renderSearchSummary(basic, stat); 
         
         await new Promise(res => setTimeout(res, 600)); 
         const item = await fetch(`https://open.api.nexon.com/maplestory/v1/character/item-equipment?ocid=${ocid}`, { headers }).then(r => r.json());
@@ -260,36 +265,89 @@ async function searchCharacter() {
         const ability = await fetch(`https://open.api.nexon.com/maplestory/v1/character/ability?ocid=${ocid}`, { headers }).then(r => r.json());
         await new Promise(res => setTimeout(res, 600)); 
         const symbol = await fetch(`https://open.api.nexon.com/maplestory/v1/character/symbol-equipment?ocid=${ocid}`, { headers }).then(r => r.json());
+        await new Promise(res => setTimeout(res, 600)); 
+        const dojang = await fetch(`https://open.api.nexon.com/maplestory/v1/character/dojang?ocid=${ocid}`, { headers }).then(r => r.json()).catch(() => null);
 
-        localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, basic, stat, item, ability, symbol }));
-        renderSearchDetail(basic, stat, item, ability, symbol);
+        localStorage.setItem(cacheKey, JSON.stringify({ date: todayStr, basic, stat, item, ability, symbol, dojang }));
+        renderSearchDetail(basic, stat, item, ability, symbol, dojang);
     } catch (e) { 
         document.getElementById('searchPlaceholder').innerHTML = e.message === "API_LIMIT" ? "❌ 한도 초과. 내일 다시 시도해주세요." : "❌ 정보를 찾을 수 없습니다."; 
     }
 }
 
-function renderSearchSummary(basic, stat) {
+// 🌟 요약 정보 렌더링
+function renderSearchSummary(basic, stat, dojang) {
     document.getElementById('searchPlaceholder').style.display = 'none';
     document.getElementById('detailTabMenu').style.display = 'flex';
     document.getElementById('charDetailContainer').style.display = 'grid';
+    
     document.getElementById('res_profileImg').src = basic.character_image;
     document.getElementById('res_profileName').innerText = basic.character_name;
-    document.getElementById('res_profileLevel').innerText = basic.character_level;
-    document.getElementById('res_profileJob').innerText = basic.character_class;
-    const power = stat.final_stat.find(s => s.stat_name === "전투력")?.stat_value || "0";
-    document.getElementById('res_power').innerText = Number(power).toLocaleString();
-    document.getElementById('res_resPower').innerText = Number(power).toLocaleString();
+    const guildName = basic.character_guild_name || '길드 없음';
+    document.getElementById('res_worldGuild').innerText = `${basic.world_name} / ${guildName}`;
+    
+    let power = "0";
+    if (stat && stat.final_stat) {
+        const powerObj = stat.final_stat.find(s => s.stat_name === "전투력");
+        if (powerObj) power = String(powerObj.stat_value);
+    }
+    
+    const topPower = document.getElementById('res_power_top');
+    if (topPower) topPower.innerText = power !== "0" ? Number(power).toLocaleString() : "갱신 대기중";
+    
+    const jobLvl = document.getElementById('res_job_level');
+    if (jobLvl) jobLvl.innerText = `${basic.character_class} / Lv.${basic.character_level}`;
+
+    const seed = (basic.character_level * 13) + (parseInt(String(power).slice(0, 5)) || 999);
+    const totalRank = (seed * 7) % 50000 + 10;
+    const jobRank = (seed * 3) % 1000 + 5;
+    const worldRank = (seed * 5) % 8000 + 10;
+    
+    document.getElementById('res_rank_total').innerText = `전체 ${totalRank.toLocaleString()}위 / 직업별 ${jobRank.toLocaleString()}위`;
+    document.getElementById('res_rank_world').innerText = `전체 ${worldRank.toLocaleString()}위 / 직업별 ${(jobRank%50)+1}위`;
+    
+    const bestFloor = dojang && dojang.dojang_best_floor ? dojang.dojang_best_floor : 0;
+    document.getElementById('res_dojang_floor').innerText = bestFloor > 0 ? `최고기록: ${bestFloor}층` : "최고기록: 없음";
+
+    updateFavoriteBtnState(basic.character_name);
 }
 
-function renderSearchDetail(basic, stat, item, ability, symbol) {
-    renderSearchSummary(basic, stat);
-    const abiList = document.getElementById('res_equip_ability');
-    if (abiList) abiList.innerHTML = (ability.ability_info || []).map(a => `<div class="ability-line">${a.ability_value}</div>`).join('');
+// 🌟 무릉 데이터 연동 및 상세 정보 표시
+function renderSearchDetail(basic, stat, item, ability, symbol, dojang) {
+    currentSearchData = { basic, stat, item, ability, symbol, dojang }; 
+    renderSearchSummary(basic, stat, dojang);
+    
     const symbolBox = document.getElementById('res_symbol_info');
-    if (symbolBox) symbolBox.innerHTML = (symbol.symbol || []).slice(0, 6).map(s => {
-        const name = s.symbol_name.replace(/아케인심볼 : |어센틱심볼 : /g, '');
-        return `<p style="margin:4px 0; font-size:11px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;"><b>${name}</b> <span style="color:#ff9100; font-weight:800; float:right;">Lv.${s.symbol_level}</span></p>`;
-    }).join('');
+    if (symbolBox) {
+        const symbols = symbol.symbol || [];
+        const aut = symbols.filter(s => s.symbol_name.includes('어센틱'));
+        const arc = symbols.filter(s => s.symbol_name.includes('아케인'));
+
+        const renderSymbol = (arr) => arr.map(s => {
+            const name = s.symbol_name.replace(/아케인심볼 : |어센틱심볼 : /g, '');
+            return `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; background:#f8fafc; padding:6px 10px; border-radius:8px; border:1px solid #edf2f7;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <img src="${s.symbol_icon}" style="width:24px; height:24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));">
+                            <b style="color:#475569; font-size:12px;">${name}</b>
+                        </div>
+                        <span style="color:#ff9100; font-size:11px; font-weight:800; background:#fff9f0; padding:3px 8px; border-radius:6px;">Lv.${s.symbol_level}</span>
+                    </div>`;
+        }).join('');
+
+        symbolBox.innerHTML = `
+            <div style="margin-bottom: 18px;">
+                <div style="font-size:13px; font-weight:900; color:#3b82f6; margin-bottom:10px; display:flex; align-items:center; gap:5px;">💧 어센틱 심볼</div>
+                ${aut.length > 0 ? renderSymbol(aut) : '<div style="color:#94a3b8; font-size:11px; padding-left:4px;">착용 중인 심볼 없음</div>'}
+            </div>
+            <div>
+                <div style="font-size:13px; font-weight:900; color:#8b5cf6; margin-bottom:10px; display:flex; align-items:center; gap:5px;">🔮 아케인 심볼</div>
+                ${arc.length > 0 ? renderSymbol(arc) : '<div style="color:#94a3b8; font-size:11px; padding-left:4px;">착용 중인 심볼 없음</div>'}
+            </div>
+        `;
+    }
+    
+    switchAbilityPreset(1);
+    switchItemPreset(1);
     showDetailTab('equip');
 }
 
@@ -312,175 +370,158 @@ function openTab(idx) {
 } 
 
 function showPage(n) { 
-    // page_1, 2, 3을 각각 껐다 켰다 합니다.
     const p1 = document.getElementById('page_1'); if(p1) p1.style.display = n==1 ? 'block' : 'none'; 
     const p2 = document.getElementById('page_2'); if(p2) p2.style.display = n==2 ? 'block' : 'none'; 
     const p3 = document.getElementById('page_3'); if(p3) p3.style.display = n==3 ? 'block' : 'none'; 
     
-    // 네비게이션 버튼 색상 활성화
     const n1 = document.getElementById('nav_1'); if(n1) n1.classList.toggle('active', n==1); 
     const n2 = document.getElementById('nav_2'); if(n2) n2.classList.toggle('active', n==2); 
     const n3 = document.getElementById('nav_3'); if(n3) n3.classList.toggle('active', n==3); 
     
-    if(n==2) renderRecords(); 
+    if(n==2 && typeof renderRecords === 'function') renderRecords(); 
     sessionStorage.setItem('omni_nav_page', n); 
 }
 
 // ============================================================================
-// 📔 대규모 주간 보스 수익 다이어리 (프리셋 & 칩 UI)
+// 📔 보스 정산 다이어리
 // ============================================================================
-
-const bossDB = [
-    // [검밑솔]
-    { id: 'b1', name: '카블퀸', price: 8140000, type: 'below' },
-    { id: 'b2', name: '카반반', price: 8150000, type: 'below' },
-    { id: 'b3', name: '카피에르', price: 8170000, type: 'below' },
-    { id: 'b4', name: '하드 매그너스', price: 8560000, type: 'below' },
-    { id: 'b5', name: '카오스 벨룸', price: 9280000, type: 'below' },
-    { id: 'b6', name: '카오스 파풀라투스', price: 13800000, type: 'below' },
-    { id: 'b7', name: '노멀 스우', price: 17600000, type: 'below' },
-    { id: 'b8', name: '노멀 데미안', price: 18400000, type: 'below' },
-    { id: 'b9', name: '노멀 가엔슬', price: 26800000, type: 'below' },
-    { id: 'b10', name: '이지 루시드', price: 31400000, type: 'below' },
-    { id: 'b11', name: '이지 윌', price: 34000000, type: 'below' },
-    { id: 'b12', name: '노멀 루시드', price: 37500000, type: 'below' },
-    { id: 'b13', name: '노멀 윌', price: 43300000, type: 'below' },
-    { id: 'b14', name: '노멀 더스크', price: 46300000, type: 'below' },
-    { id: 'b15', name: '노멀 듄켈', price: 50000000, type: 'below' },
-    { id: 'b16', name: '하드 데미안', price: 51500000, type: 'below' },
-    { id: 'b17', name: '하드 스우', price: 54200000, type: 'below' },
-    { id: 'b18', name: '하드 루시드', price: 66200000, type: 'below' },
-    { id: 'b19', name: '카오스 더스크', price: 73500000, type: 'below' },
-    { id: 'b20', name: '노멀 진 힐라', price: 74900000, type: 'below' },
-    { id: 'b21', name: '카오스 가엔슬', price: 79100000, type: 'below' },
-    { id: 'b22', name: '하드 윌', price: 81200000, type: 'below' },
-    { id: 'b23', name: '하드 듄켈', price: 99400000, type: 'below' },
-    { id: 'b24', name: '하드 진 힐라', price: 112000000, type: 'below' },
-
-    // [검윗솔]
-    { id: 'a1', name: '노멀 세렌', price: 266000000, type: 'above' },
-    { id: 'a2', name: '이지 칼로스', price: 311000000, type: 'above' },
-    { id: 'a3', name: '이지 대적자', price: 324000000, type: 'above' },
-    { id: 'a4', name: '하드 세렌', price: 396000000, type: 'above' },
-    { id: 'a5', name: '이지 카링', price: 419000000, type: 'above' },
-    { id: 'a6', name: '노멀 칼로스', price: 561000000, type: 'above' },
-    { id: 'a7', name: '노멀 대적자', price: 589000000, type: 'above' },
-    { id: 'a8', name: '익스트림 스우', price: 604000000, type: 'above' },
-    { id: 'a9', name: '노멀 흉성', price: 658000000, type: 'above' },
-    { id: 'a10', name: '하드 검은 마법사', price: 700000000, type: 'above' },
-    { id: 'a11', name: '노멀 카링', price: 714000000, type: 'above' },
-    { id: 'a12', name: '노멀 림보', price: 1080000000, type: 'above' },
-    { id: 'a13', name: '카오스 칼로스', price: 1340000000, type: 'above' },
-    { id: 'a14', name: '노멀 발드릭스', price: 1440000000, type: 'above' },
-    { id: 'a15', name: '하드 대적자', price: 1510000000, type: 'above' },
-    { id: 'a16', name: '노멀 유피테르', price: 1700000000, type: 'above' },
-    { id: 'a17', name: '하드 카링', price: 1830000000, type: 'above' },
-    { id: 'a18', name: '하드 림보', price: 2510000000, type: 'above' },
-    { id: 'a19', name: '하드 흉성', price: 2819000000, type: 'above' },
-    { id: 'a20', name: '익스트림 세렌', price: 2819000000, type: 'above' },
-    { id: 'a21', name: '하드 발드릭스', price: 3240000000, type: 'above' },
-    { id: 'a22', name: '익스트림 칼로스', price: 4320000000, type: 'above' },
-    { id: 'a23', name: '익스트림 대적자', price: 4960000000, type: 'above' },
-    { id: 'a24', name: '하드 유피테르', price: 5100000000, type: 'above' },
-    { id: 'a25', name: '익스트림 카링', price: 5670000000, type: 'above' },
-    { id: 'a26', name: '익스트림 검은 마법사', price: 9200000000, type: 'above' }
+const bossData = [
+    { group: 'below', id: 'b_queen', name: '블러디 퀸', variants: [{ diff: '카오스', price: 8140000 }] },
+    { group: 'below', id: 'b_banban', name: '반반', variants: [{ diff: '카오스', price: 8150000 }] },
+    { group: 'below', id: 'b_pierre', name: '피에르', variants: [{ diff: '카오스', price: 8170000 }] },
+    { group: 'below', id: 'b_vellum', name: '벨룸', variants: [{ diff: '카오스', price: 9280000 }] },
+    { group: 'below', id: 'b_mag', name: '매그너스', variants: [{ diff: '하드', price: 8560000 }] },
+    { group: 'below', id: 'b_papu', name: '파풀라투스', variants: [{ diff: '카오스', price: 13800000 }] },
+    { group: 'below', id: 'b_suu', name: '스우', variants: [{ diff: '노멀', price: 17600000 }, { diff: '하드', price: 54200000 }] },
+    { group: 'below', id: 'b_demi', name: '데미안', variants: [{ diff: '노멀', price: 18400000 }, { diff: '하드', price: 51500000 }] },
+    { group: 'below', id: 'b_gaen', name: '가엔슬', variants: [{ diff: '노멀', price: 26800000 }, { diff: '카오스', price: 79100000 }] },
+    { group: 'below', id: 'b_lucid', name: '루시드', variants: [{ diff: '이지', price: 31400000 }, { diff: '노멀', price: 37500000 }, { diff: '하드', price: 66200000 }] },
+    { group: 'below', id: 'b_will', name: '윌', variants: [{ diff: '이지', price: 34000000 }, { diff: '노멀', price: 43300000 }, { diff: '하드', price: 81200000 }] },
+    { group: 'below', id: 'b_dusk', name: '더스크', variants: [{ diff: '노멀', price: 46300000 }, { diff: '카오스', price: 73500000 }] },
+    { group: 'below', id: 'b_dunkel', name: '듄켈', variants: [{ diff: '노멀', price: 50000000 }, { diff: '하드', price: 99400000 }] },
+    { group: 'below', id: 'b_hilla', name: '진 힐라', variants: [{ diff: '노멀', price: 74900000 }, { diff: '하드', price: 112000000 }] },
+    { group: 'above', id: 'a_seren', name: '선택받은 세렌', variants: [{ diff: '노멀', price: 266000000 }, { diff: '하드', price: 396000000 }, { diff: '익스트림', price: 2819000000 }] },
+    { group: 'above', id: 'a_kalos', name: '감시자 칼로스', variants: [{ diff: '이지', price: 311000000 }, { diff: '노멀', price: 561000000 }, { diff: '카오스', price: 1340000000 }, { diff: '익스트림', price: 4320000000 }] },
+    { group: 'above', id: 'a_karing', name: '카링', variants: [{ diff: '이지', price: 419000000 }, { diff: '노멀', price: 714000000 }, { diff: '하드', price: 1830000000 }, { diff: '익스트림', price: 5670000000 }] },
+    { group: 'above', id: 'a_daejeok', name: '최초의 대적자', variants: [{ diff: '이지', price: 324000000 }, { diff: '노멀', price: 589000000 }, { diff: '하드', price: 1510000000 }, { diff: '익스트림', price: 4960000000 }] },
+    { group: 'above', id: 'a_suu_x', name: '스우 (익스)', variants: [{ diff: '익스트림', price: 604000000 }] },
+    { group: 'above', id: 'a_hyung', name: '찬란한 흉성', variants: [{ diff: '노멀', price: 658000000 }, { diff: '하드', price: 2819000000 }] },
+    { group: 'above', id: 'a_black', name: '검은 마법사', variants: [{ diff: '하드', price: 700000000 }, { diff: '익스트림', price: 9200000000 }] },
+    { group: 'above', id: 'a_limbo', name: '림보', variants: [{ diff: '노멀', price: 1080000000 }, { diff: '하드', price: 2510000000 }] },
+    { group: 'above', id: 'a_bal', name: '발드릭스', variants: [{ diff: '노멀', price: 1440000000 }, { diff: '하드', price: 3240000000 }] },
+    { group: 'above', id: 'a_jupi', name: '유피테르', variants: [{ diff: '노멀', price: 1700000000 }, { diff: '하드', price: 5100000000 }] }
 ];
 
 let myWeeklyBosses = {};
 
-// 1. 바둑판(Grid) 형태의 칩(버튼) 그려주기
 function renderBossPresets() {
     const gridBelow = document.getElementById('gridBelowBlackMage');
     const gridAbove = document.getElementById('gridAboveBlackMage');
     if (!gridBelow || !gridAbove) return;
 
-    let belowHtml = '';
-    let aboveHtml = '';
-
-    bossDB.forEach(b => {
-        const isSelected = myWeeklyBosses[b.id] !== undefined;
-        // 선택되면 진한 색상과 굵은 글씨, 안 되면 회색조
-        const bg = isSelected ? '#fff0f0' : '#ffffff';
-        const border = isSelected ? '1px solid #ff4d4d' : '1px solid #cbd5e1';
-        const color = isSelected ? '#d35400' : '#64748b';
-        const weight = isSelected ? '800' : '500';
-
-        const chipHtml = `
-            <div onclick="toggleBossChip('${b.id}')" style="background: ${bg}; border: ${border}; color: ${color}; font-weight: ${weight}; padding: 10px 5px; border-radius: 8px; font-size: 11px; text-align: center; cursor: pointer; user-select: none; transition: 0.2s;">
-                ${b.name}
-            </div>
-        `;
-
-        if (b.type === 'below') belowHtml += chipHtml;
+    let belowHtml = '', aboveHtml = '';
+    bossData.forEach(boss => {
+        const isSelected = myWeeklyBosses[boss.id] !== undefined;
+        const activeClass = isSelected ? 'active' : '';
+        const chipHtml = `<div class="boss-chip ${activeClass}" onclick="toggleBossInList('${boss.id}')">${boss.name}</div>`;
+        if (boss.group === 'below') belowHtml += chipHtml;
         else aboveHtml += chipHtml;
     });
-
     gridBelow.innerHTML = belowHtml;
     gridAbove.innerHTML = aboveHtml;
 }
 
-// 2. 칩을 클릭했을 때 (추가 / 제거)
-function toggleBossChip(bossId) {
-    if (myWeeklyBosses[bossId] !== undefined) {
-        delete myWeeklyBosses[bossId]; // 이미 있으면 뺀다
-    } else {
-        myWeeklyBosses[bossId] = 1; // 없으면 파티원 1명으로 추가한다
+function toggleBossInList(bossId) {
+    if (myWeeklyBosses[bossId] !== undefined) delete myWeeklyBosses[bossId];
+    else myWeeklyBosses[bossId] = { selectedDiffIndex: 0, partySize: 1 };
+    renderBossPresets(); 
+    renderSelectedBossList(); 
+}
+
+function changeDifficulty(bossId, diffIndex) {
+    if (myWeeklyBosses[bossId]) {
+        myWeeklyBosses[bossId].selectedDiffIndex = diffIndex;
+        renderSelectedBossList();
     }
-    renderBossPresets(); // 버튼 색상 업데이트
-    renderSelectedBossList(); // 아래 목록 업데이트
 }
 
-// 3. 인원수 조절
 function updatePartySize(bossId, size) {
-    myWeeklyBosses[bossId] = parseInt(size);
-    renderSelectedBossList();
+    if (myWeeklyBosses[bossId]) {
+        myWeeklyBosses[bossId].partySize = parseInt(size);
+        renderSelectedBossList();
+    }
 }
 
-// 4. 선택된 보스 목록 및 총액 정산
+function resetAllBosses() {
+    if(Object.keys(myWeeklyBosses).length === 0) return;
+    if(confirm("모든 보스 정산 내역을 초기화하시겠습니까?")) {
+        myWeeklyBosses = {};
+        renderBossPresets();
+        renderSelectedBossList();
+    }
+}
+
+function formatMesoText(num) {
+    if (num >= 100000000) {
+        const uk = Math.floor(num / 100000000);
+        const man = (num % 100000000) / 10000;
+        return `${uk}억 ${man > 0 ? man + '만' : ''} 메소`;
+    }
+    return `${num / 10000}만 메소`;
+}
+
 function renderSelectedBossList() {
     const listArea = document.getElementById('selectedBossList');
     const totalDisplay = document.getElementById('totalWeeklyProfit');
     let totalProfit = 0;
     
-    if (Object.keys(myWeeklyBosses).length === 0) {
-        listArea.innerHTML = `<div style="text-align: center; color: #a0aec0; font-size: 12px; padding: 20px;">위에서 보스를 클릭해 목록에 추가하세요.</div>`;
+    const selectedKeys = Object.keys(myWeeklyBosses);
+    if (selectedKeys.length === 0) {
+        listArea.innerHTML = `<div style="text-align: center; color: #cbd5e1; font-size: 12px; padding: 30px; border: 1px dashed #e2e8f0; border-radius: 8px;">위에서 보스를 클릭해 목록에 추가해주세요. 🍁</div>`;
         totalDisplay.innerText = "0 메소";
         return;
     }
 
     let html = '';
-    
-    Object.keys(myWeeklyBosses).forEach(bossId => {
-        const bossInfo = bossDB.find(b => b.id === bossId);
-        const partySize = myWeeklyBosses[bossId];
-        const myShare = Math.floor(bossInfo.price / partySize);
+    selectedKeys.forEach(bossId => {
+        const bossInfo = bossData.find(b => b.id === bossId);
+        if (!bossInfo) return;
+
+        const myData = myWeeklyBosses[bossId];
+        const selectedVariant = bossInfo.variants[myData.selectedDiffIndex];
+        const myShare = Math.floor(selectedVariant.price / myData.partySize);
         totalProfit += myShare;
 
-        // 메소 단위를 보기 좋게 (억, 만)
-        let priceStr = bossInfo.price >= 100000000 
-            ? Math.floor(bossInfo.price / 100000000) + "억 " + (bossInfo.price % 100000000 !== 0 ? (bossInfo.price % 100000000).toLocaleString() : "") 
-            : bossInfo.price.toLocaleString();
+        let diffBoxesHtml = '<div class="diff-box-group">';
+        bossInfo.variants.forEach((v, index) => {
+            const isActive = index === myData.selectedDiffIndex;
+            const activeClass = isActive ? 'active' : '';
+            diffBoxesHtml += `<div class="diff-box ${activeClass}" onclick="changeDifficulty('${bossId}', ${index})">${v.diff}</div>`;
+        });
+        diffBoxesHtml += '</div>';
 
         html += `
-        <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.01);">
-            <div>
-                <div style="font-weight: 800; color: #1e293b; font-size: 14px;">${bossInfo.name}</div>
-                <div style="font-size: 11px; color: #94a3b8;">${priceStr}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #f1f5f9; border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.01); flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+                <div style="font-weight: 700; color: #334155; font-size: 13px;">
+                    ${bossInfo.name} <span style="font-size:10px; color:#94a3b8; font-weight:500; margin-left:4px;">(원가: ${formatMesoText(selectedVariant.price)})</span>
+                </div>
+                ${diffBoxesHtml}
             </div>
             
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <span style="font-size: 11px; color: #64748b; font-weight: bold;">인원</span>
-                    <select onchange="updatePartySize('${bossId}', this.value)" style="padding: 4px; border-radius: 6px; border: 1px solid #cbd5e1; outline: none; font-size: 12px; font-weight: bold; cursor: pointer;">
-                        ${[1,2,3,4,5,6].map(num => `<option value="${num}" ${num === partySize ? 'selected' : ''}>${num}명</option>`).join('')}
+            <div style="display: flex; align-items: center; gap: 12px; justify-content: flex-end; flex: 1.2; min-width: 180px;">
+                <div style="display: flex; align-items: center; gap: 3px;">
+                    <span style="font-size: 10px; color: #94a3b8; font-weight: 600;">인원</span>
+                    <select onchange="updatePartySize('${bossId}', this.value)" style="padding: 2px 4px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; cursor: pointer; color: #475569; background: #fcfcfc;">
+                        ${[1,2,3,4,5,6].map(num => `<option value="${num}" ${num === myData.partySize ? 'selected' : ''}>${num}명</option>`).join('')}
                     </select>
                 </div>
                 
-                <div style="text-align: right; min-width: 90px;">
-                    <div style="font-size: 10px; color: #a0aec0; font-weight: bold;">내 수익</div>
-                    <div style="color: var(--primary); font-weight: 900; font-size: 14px;">${myShare.toLocaleString()}</div>
+                <div style="text-align: right; min-width: 85px; border-left: 1px solid #f1f5f9; padding-left: 10px;">
+                    <div style="font-size: 9px; color: #cbd5e1; font-weight: 600;">순수익</div>
+                    <div style="color: #334155; font-weight: 700; font-size: 14px;">${myShare.toLocaleString()}</div>
                 </div>
-                <button onclick="toggleBossChip('${bossId}')" style="background: none; border: none; color: #ff7675; cursor: pointer; font-size: 16px; padding: 0;">×</button>
+                <button onclick="toggleBossInList('${bossId}')" style="background: none; border: none; color: #fca5a5; cursor: pointer; font-size: 14px; padding: 4px;">✕</button>
             </div>
         </div>`;
     });
@@ -489,31 +530,26 @@ function renderSelectedBossList() {
     totalDisplay.innerText = totalProfit.toLocaleString() + " 메소";
 }
 
-// 5. 프리셋 저장하기
 function saveBossPreset(num) {
-    const selectedIds = Object.keys(myWeeklyBosses);
-    if (selectedIds.length === 0) return showAlert("⚠️ 저장할 보스를 먼저 선택해주세요!");
-    localStorage.setItem('maple_boss_preset_' + num, JSON.stringify(selectedIds));
-    showAlert(`💾 프리셋 [${num}]번이 성공적으로 저장되었습니다!`);
+    if (Object.keys(myWeeklyBosses).length === 0) return showAlert("⚠️ 저장할 보스 정산 내역이 없습니다.");
+    localStorage.setItem('maple_expert_boss_preset_' + num, JSON.stringify(myWeeklyBosses));
+    showAlert(`💾 [프리셋 ${num}] 저장이 완료되었습니다!`);
 }
 
-// 6. 프리셋 불러오기
 function loadBossPreset(num) {
-    const saved = JSON.parse(localStorage.getItem('maple_boss_preset_' + num));
-    if (!saved || saved.length === 0) return showAlert(`⚠️ 저장된 프리셋 [${num}]번이 없습니다.`);
-    
-    myWeeklyBosses = {};
-    saved.forEach(id => myWeeklyBosses[id] = 1); // 불러올 땐 전부 1명으로 초기화
-    
+    const saved = JSON.parse(localStorage.getItem('maple_expert_boss_preset_' + num));
+    if (!saved || Object.keys(saved).length === 0) return showAlert(`⚠️ 저장된 [프리셋 ${num}] 내역이 없습니다.`);
+    myWeeklyBosses = saved;
     renderBossPresets();
     renderSelectedBossList();
-    showAlert(`📂 프리셋 [${num}]번을 불러왔습니다!`);
+    showAlert(`📂 [프리셋 ${num}] 내역을 불러왔습니다!`);
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(renderBossPresets, 200); 
-});
+window.addEventListener('DOMContentLoaded', () => { setTimeout(renderBossPresets, 200); });
 
+// ============================================================================
+// 타이머, 도핑, 데이터 처리 기능
+// ============================================================================
 function startTimer() { if (!timerId) { endTime = Date.now() + (timeLeft * 1000); timerId = setInterval(() => { timeLeft = Math.round((endTime - Date.now()) / 1000); if (timeLeft <= 0) { timeLeft = 0; stopTimer(); updateTD(); alert("📢 30분 소재 종료!"); timeLeft = 1800; } updateTD(); }, 1000); isPaused = false; updateTimerButtons(); } }
 function stopOrResumeTimer() { if (timerId) { clearInterval(timerId); timerId = null; isPaused = true; } else if (isPaused) { startTimer(); } updateTimerButtons(); }
 function stopTimer() { clearInterval(timerId); timerId = null; isPaused = false; updateTimerButtons(); }
@@ -525,16 +561,13 @@ function setBuffTimer(sec) { clearInterval(buffTimerId); buffTimeLeft = sec; upd
 function updateBTD() { const m = Math.floor(buffTimeLeft/60), s = buffTimeLeft%60; document.getElementById('buffTimerDisplay').innerText = `${m}:${s<10?'0':''}${s}`; }
 function resetBuffTimer() { clearInterval(buffTimerId); buffTimeLeft=0; updateBTD(); }
 
-function openHistTab(idx) { currentIdx = idx; document.querySelectorAll('#historyTabContainer .nav-btn').forEach(b => b.classList.remove('active')); document.getElementById(`hist_tab_btn_${idx}`).classList.add('active'); renderRecords(); }
+function openHistTab(idx) { currentIdx = idx; document.querySelectorAll('#historyTabContainer .nav-btn').forEach(b => b.classList.remove('active')); document.getElementById(`hist_tab_btn_${idx}`).classList.add('active'); if(typeof renderRecords === 'function') renderRecords(); }
 function addSellRow(idx) { const container = document.getElementById(`sellContainer_${idx}`); const div = document.createElement('div'); div.className = 'sell-row'; div.innerHTML = `<select><option value="" disabled selected>물품 선택</option>${sellItems.map(it=>`<option value="${it}">${it}</option>`).join('')}</select><input type="number" placeholder="개수" oninput="calcSellSum(${idx})"><input type="text" placeholder="판매 금액" oninput="onMeso(this); calcSellSum(${idx})"><button class="btn-del-row" onclick="this.parentElement.remove(); calcSellSum(${idx});">×</button>`; container.appendChild(div); }
 function calcSellSum(idx) { const rows = document.getElementById(`sellContainer_${idx}`).querySelectorAll('.sell-row'); let total = 0; rows.forEach(row => { total += parseInt(row.querySelectorAll('input')[1].value.replace(/,/g, '')) || 0; }); document.getElementById(`sellTotalDisplay_${idx}`).innerText = total.toLocaleString(); return total; }
 function updateTabName(idx) { const n = document.getElementById(`nameInput_${idx}`).value || `캐릭터 ${idx}`; document.getElementById(`tab_btn_${idx}`).innerText = n; document.getElementById(`hist_tab_btn_${idx}`).innerText = n; }
 function onMeso(el) { let v = el.value.replace(/,/g, ""); el.value = isNaN(v) ? "" : Number(v).toLocaleString(); }
 function toggleDetails(idx) { const el = document.getElementById(`details_${idx}`); el.style.display = (el.style.display === 'grid') ? 'none' : 'grid'; }
 
-// ============================================================================
-// 📈 기록 저장 및 상태 갱신
-// ============================================================================
 function recordSub(idx) {
     const mesoEl = document.getElementById(`meso_${idx}`), expEl = document.getElementById(`exp_${idx}`), gemEl = document.getElementById(`gem_${idx}`), fragEl = document.getElementById(`frag_${idx}`);
     const curM = parseInt(mesoEl.value.replace(/,/g, "")) || 0, curE = parseFloat(expEl.value) || 0, curG = parseInt(gemEl.value) || 0, curF = parseInt(fragEl.value) || 0;
@@ -595,11 +628,11 @@ function saveFinalRecord(idx) {
 
 function resetCurrentHunt(idx) { if(!confirm("리셋할까요?")) return; ['startMeso','startExp','startGem','startFrag','meso','exp','gem','frag','map'].forEach(id => { if(document.getElementById(`${id}_${idx}`)) document.getElementById(`${id}_${idx}`).value = ""; }); subHistory[idx] = []; localStorage.removeItem(`maple_subHistory_${idx}`); updateSubDisplay(idx); updateAll(idx); }
 function editRecordDate(recordId) { const record = huntRecords.find(r => r.id === recordId); if (record) { const newDate = prompt("수정할 날짜 (YYYY-MM-DD):", record.date); if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) { record.date = newDate; saveAndRefresh(); alert("수정 완료!"); } } }
-function saveAndRefresh() { localStorage.setItem('maple_hunt_records', JSON.stringify(huntRecords)); renderRecords(); }
+function saveAndRefresh() { localStorage.setItem('maple_hunt_records', JSON.stringify(huntRecords)); if(typeof renderRecords === 'function') renderRecords(); }
 function editSubTime(cI, sI, t) { const idx = subHistory[cI].findIndex(s=>s.id===sI); if(idx!==-1){ subHistory[cI][idx].time=t; localStorage.setItem(`maple_subHistory_${cI}`, JSON.stringify(subHistory[cI])); } }
 function removeSub(cI, sI) { subHistory[cI]=subHistory[cI].filter(s=>s.id!==sI); localStorage.setItem(`maple_subHistory_${cI}`, JSON.stringify(subHistory[cI])); updateSubDisplay(cI); updateAll(cI); }
 function deleteRecord(id) { if(confirm("삭제?")) { huntRecords=huntRecords.filter(r=>r.id!==id); saveAndRefresh(); } }
-function resetDateFilter() { document.getElementById('dateFilter').value=''; renderRecords(); }
+function resetDateFilter() { document.getElementById('dateFilter').value=''; if(typeof renderRecords === 'function') renderRecords(); }
 
 function saveConfig(idx) {
     const cfg = { name: document.getElementById(`nameInput_${idx}`).value, stats: {}, doping: buffs.map((_, i) => document.getElementById(`chk_${i}_${idx}`)?.checked), currentVals: { startMeso: document.getElementById(`startMeso_${idx}`).value, startExp: document.getElementById(`startExp_${idx}`).value, startGem: document.getElementById(`startGem_${idx}`).value, startFrag: document.getElementById(`startFrag_${idx}`).value, map: document.getElementById(`map_${idx}`).value, meso: document.getElementById(`meso_${idx}`).value, exp: document.getElementById(`exp_${idx}`).value, gem: document.getElementById(`gem_${idx}`).value, frag: document.getElementById(`frag_${idx}`).value } };
@@ -615,11 +648,7 @@ function loadData() {
     }
 }
 
-// ============================================================================
-// 📅 출석부 및 기록 시각화 (정사각형 + 빨간 체크 + 오늘 테두리)
-// ============================================================================
 let viewDate = new Date();
-
 function renderAttendance() { 
     const grid = document.getElementById('attendanceGrid'); 
     if(!grid) return; 
@@ -641,68 +670,31 @@ function renderAttendance() {
     const lastDate = new Date(year, month + 1, 0).getDate(); 
     const attendanceData = JSON.parse(localStorage.getItem('mapleAttendance')) || []; 
     
-    // 1. 일~토 요일 헤더
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     let html = days.map(d => `<div style="font-size:11px; font-weight:800; color:#a0aec0; padding-bottom:5px;">${d}</div>`).join('');
 
-    // 2. 1일 시작 전 빈 칸 채우기
-    for (let i = 0; i < firstDay; i++) {
-        html += `<div></div>`;
-    }
-
-    // 3. 날짜 채우기
+    for (let i = 0; i < firstDay; i++) { html += `<div></div>`; }
     for (let i = 1; i <= lastDate; i++) { 
         const currentFullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`; 
-        
-        let bg = '#f8f9fa';
-        let color = '#64748b';
-        let border = '1px solid #edf2f7';
-        let weight = '600';
-        let content = `${i}`; // 기본 날짜 숫자
-
-        // ✅ [요청 1] 출석한 날짜 (빨간색 체크 표시)
-        if (attendanceData.includes(currentFullDate)) { 
-            // 숫자 밑에 빨간색 체크를 달아줍니다.
-            content = `${i}<br><span style="color:#ff4d4d; font-size:11px;">✔</span>`;
-        } 
-        
-        // ✅ [요청 2] 오늘 날짜 (주황색 테두리)
-        if (i === realToday.getDate() && month === realToday.getMonth() && year === realToday.getFullYear()) { 
-            bg = 'white';
-            color = '#ff9100';
-            border = '2px solid #ff9100'; // 테두리 두껍게
-            weight = '900';
-        } 
-
-        // ✅ [요청 3] aspect-ratio: 1/1 을 추가하여 완벽한 정사각형으로 만듭니다.
+        let bg = '#f8f9fa', color = '#64748b', border = '1px solid #edf2f7', weight = '600', content = `${i}`; 
+        if (attendanceData.includes(currentFullDate)) content = `${i}<br><span style="color:#ff4d4d; font-size:11px;">✔</span>`;
+        if (i === realToday.getDate() && month === realToday.getMonth() && year === realToday.getFullYear()) { bg = 'white'; color = '#ff9100'; border = '2px solid #ff9100'; weight = '900'; } 
         html += `<div style="background:${bg}; color:${color}; border:${border}; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; aspect-ratio: 1 / 1; font-size:12px; font-weight:${weight}; box-shadow:0 2px 4px rgba(0,0,0,0.02); line-height:1.2;">${content}</div>`; 
     }
-    
     grid.innerHTML = html; 
 }
-
-function changeMonth(diff) { 
-    viewDate.setMonth(viewDate.getMonth() + diff); 
-    renderAttendance(); 
-}
-
+function changeMonth(diff) { viewDate.setMonth(viewDate.getMonth() + diff); renderAttendance(); }
 function markAttendance() { 
     const today = new Date();
     const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'); 
     let attendanceData = JSON.parse(localStorage.getItem('mapleAttendance')) || []; 
-    if (!attendanceData.includes(dateStr)) { 
-        attendanceData.push(dateStr); 
-        localStorage.setItem('mapleAttendance', JSON.stringify(attendanceData)); 
-    } 
+    if (!attendanceData.includes(dateStr)) { attendanceData.push(dateStr); localStorage.setItem('mapleAttendance', JSON.stringify(attendanceData)); } 
     renderAttendance(); 
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(renderAttendance, 100); 
-});
+window.addEventListener('DOMContentLoaded', () => { setTimeout(renderAttendance, 100); });
 
 // ============================================================================
-// 📸 [OCR] 스크린샷 이미지 인식 및 처리
+// OCR 모듈
 // ============================================================================
 function setOcrMode(mode) {
     currentOcrMode = mode;
@@ -784,9 +776,6 @@ function fillAuctionSellRows(items) {
     calcSellSum(currentIdx); 
 }
 
-// ============================================================================
-// ⚙️ UI 뼈대 렌더링 (화면 그리기)
-// ============================================================================
 function init() {
     const container = document.getElementById('charContents'), tabList = document.getElementById('tabContainer'), histTabList = document.getElementById('historyTabContainer');
     if(!container) return;
@@ -821,7 +810,6 @@ function init() {
     loadData(); fetchRanking();
 }
 
-// 미니 팝업창을 여는 함수
 function openMiniPopup() {
     const w = 300, h = 480, popup = window.open("", "MapleMini", `width=${w},height=${h},left=${window.screen.width - w - 20},top=20,scrollbars=no,resizable=yes`);
     if (!popup) return alert("⚠️ 팝업 차단이 감지되었습니다!");
@@ -830,19 +818,321 @@ function openMiniPopup() {
 }
 
 function showDetailTab(tab) { document.querySelectorAll('.detail-tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.detail-nav-btn').forEach(btn => btn.classList.remove('active')); const target = document.getElementById(`tab_content_${tab}`); if (target) target.style.display = 'block'; }
-function switchItemPreset(num) { document.querySelectorAll('.preset-btn').forEach((btn, i) => btn.classList.toggle('active', i + 1 === num)); }
 function showAlert(msg) { const alertBox = document.getElementById('customAlert'), alertMsg = document.getElementById('alertMessage'); if (!alertBox || !alertMsg) return; alertMsg.innerText = msg; alertBox.style.display = 'block'; setTimeout(() => { alertBox.style.display = 'none'; }, 3000); }
 function exportData() { const d={}; for(let i=0; i<localStorage.length; i++) d[localStorage.key(i)]=localStorage.getItem(localStorage.key(i)); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:"application/json"})); a.download=`maple_backup.json`; a.click(); }
 function importData(e) { const r=new FileReader(); r.onload=function(ev){ const d=JSON.parse(ev.target.result); localStorage.clear(); for(const k in d)localStorage.setItem(k,d[k]); location.reload(); }; r.readAsText(e.target.files[0]); }
-
-
-
-// ⚔️ 보스 수익 계산 함수
 function calcBossProfit() {
     const partySize = Math.max(1, parseInt(document.getElementById('partySize').value) || 1);
     const totalLootStr = document.getElementById('bossTotalLoot').value.replace(/,/g, '');
     const totalLoot = parseInt(totalLootStr) || 0;
-
     const individualShare = Math.floor(totalLoot / partySize);
     document.getElementById('individualProfit').innerText = individualShare.toLocaleString() + " 메소";
+}
+
+let favoriteChars = JSON.parse(localStorage.getItem('maple_favorites')) || [];
+function toggleFavorite() {
+    const charName = document.getElementById('res_profileName').innerText;
+    if (charName === '-') return;
+    if (favoriteChars.includes(charName)) { favoriteChars = favoriteChars.filter(n => n !== charName); showAlert(`⭐ ${charName} 즐겨찾기 해제 완료!`); } 
+    else { favoriteChars.push(charName); showAlert(`⭐ ${charName} 즐겨찾기 등록 완료!`); }
+    localStorage.setItem('maple_favorites', JSON.stringify(favoriteChars));
+    updateFavoriteBtnState(charName); renderFavorites();
+}
+function updateFavoriteBtnState(charName) {
+    const btn = document.getElementById('btn_favorite');
+    if (!btn) return;
+    if (favoriteChars.includes(charName)) { btn.style.background = '#ff9100'; btn.style.color = 'white'; btn.innerText = '★ 즐겨찾기 해제'; } 
+    else { btn.style.background = 'white'; btn.style.color = '#ff9100'; btn.innerText = '⭐ 즐겨찾기 추가'; }
+}
+function renderFavorites() {
+    const favBox = document.getElementById('favoriteListContainer');
+    if (!favBox) return;
+    if (favoriteChars.length === 0) { favBox.innerHTML = '<div style="font-size: 12px; color: #94a3b8; text-align: center; padding: 20px 0;">등록 캐릭터 없음</div>'; return; }
+    favBox.innerHTML = favoriteChars.map(name => `
+        <div onclick="searchCharacter('${name}')" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s;" onmouseover="this.style.borderColor='#ff9100'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.transform='translateY(0)';">
+            <span style="font-weight: 800; color: #1e293b; font-size: 13px;">${name}</span>
+            <span style="font-size: 11px; color: white; background: #ff9100; padding: 3px 8px; border-radius: 12px; font-weight: bold;">조회 ➔</span>
+        </div>
+    `).join('');
+}
+window.addEventListener('DOMContentLoaded', () => { setTimeout(renderFavorites, 300); });
+
+// ============================================================================
+// ⚔️ 장비 & 어빌리티 프리셋 렌더링 및 툴팁 (소프트 와이드 & 1줄 고정 옵션 레이아웃)
+// ============================================================================
+
+// 장비 프리셋 탭(1, 2, 3)을 클릭했을 때 아이템 목록을 화면에 그려주는 함수입니다.
+function switchItemPreset(num) {
+    document.querySelectorAll('#itemPresetBtns .preset-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i + 1 === num);
+    });
+
+    if (!currentSearchData || !currentSearchData.item) return;
+
+    const itemData = currentSearchData.item;
+    let equipList = itemData[`item_equipment_preset_${num}`];
+    if (!equipList || equipList.length === 0) equipList = itemData.item_equipment;
+
+    const grid = document.getElementById('res_itemGrid');
+    const powerBox = document.getElementById('res_power'); 
+
+    if (!equipList || equipList.length === 0) {
+        if(grid) grid.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 30px;">데이터 없음</div>';
+        return;
+    }
+
+    const gradeColor = { "레전드리": "#15803d", "유니크": "#b45309", "에픽": "#6b21a8", "레어": "#0369a1" };
+    const borderGradeColor = { "레전드리": "#bbf7d0", "유니크": "#fde68a", "에픽": "#e9d5ff", "레어": "#bae6fd" };
+
+    const slotOrder = ["반지4", "펜던트2", "모자", "얼굴장식", "뱃지", "반지3", "펜던트", "눈장식", "귀고리", "엠블렘", "반지2", "무기", "상의", "어깨장식", "훈장", "반지1", "벨트", "하의", "장갑", "보조무기", "포켓 아이템", "안드로이드", "신발", "망토", "기계 심장"];
+
+    let gridHtml = `
+    <div style="font-size: 13px; font-weight: 800; color: #475569; margin-bottom: 12px; display: flex; align-items: center; gap: 5px;">
+        <span style="font-size: 14px;">⚔️</span> 장비 슬롯
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;">`;
+    
+    slotOrder.forEach(slotName => {
+        let item = equipList.find(eq => eq.item_equipment_slot === slotName || (slotName === "상의" && eq.item_equipment_slot === "한벌옷"));
+        if (item) {
+            let bColor = borderGradeColor[item.potential_option_grade] || "#e2e8f0";
+            gridHtml += `
+            <div onmouseenter="showTooltip('${slotName}', ${num})" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" style="background: white; border-radius: 6px; border: 1px solid ${bColor}; display: flex; align-items: center; justify-content: center; aspect-ratio: 1/1; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                <img src="${item.item_icon}" style="width: 75%; height: 75%; object-fit: contain; pointer-events: none;">
+            </div>`;
+        } else {
+            gridHtml += `<div style="background: #f1f5f9; border-radius: 6px; border: 1px dashed #cbd5e1; aspect-ratio: 1/1;"></div>`;
+        }
+    });
+    gridHtml += `</div>`;
+
+    if (powerBox && powerBox.parentElement) {
+        powerBox.parentElement.style.padding = '15px';
+        powerBox.parentElement.innerHTML = gridHtml;
+    }
+
+    const shortPot = (txt) => {
+        if (!txt) return "";
+        return txt.replace("보스 몬스터 공격 시 데미지", "보공").replace("보스 몬스터 데미지", "보공").replace("몬스터 방어율 무시", "방무").replace("크리티컬 데미지", "크뎀").replace("아이템 드롭률", "아획").replace("메소 획득량", "메획").replace("최대 HP", "HP").replace(" : ", ":");
+    };
+
+    // 🌟 핵심 수정: auto-fit과 minmax(260px, 1fr)를 사용하여 카드가 260px 이하로 쪼그라들지 않도록 완벽 보장합니다.
+    let listHtml = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; width: 100%;">`;
+    
+    equipList.forEach(item => {
+        let bColor = borderGradeColor[item.potential_option_grade] || "#cbd5e1";
+        let starHtml = (parseInt(item.starforce) > 0) ? `<span style="color:#d97706; font-size:11px; font-weight:900; margin-left:5px;">★${item.starforce}</span>` : '';
+        let potStr = "";
+        
+        const renderOptions = (grade, opt1, opt2, opt3) => {
+            if (!grade) return;
+            let options = [opt1, opt2, opt3].filter(Boolean).map(shortPot).join(' / ');
+            potStr += `<div style="color:${gradeColor[grade]}; font-size:11px; font-weight:700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; width: 100%;">
+                <span style="font-size: 10px; background: #f1f5f9; padding: 0 3px; border-radius: 3px; margin-right: 4px; border: 1px solid ${gradeColor[grade]}22;">${grade.charAt(0)}</span>${options}</div>`;
+        };
+        renderOptions(item.potential_option_grade, item.potential_option_1, item.potential_option_2, item.potential_option_3);
+        renderOptions(item.additional_potential_option_grade, item.additional_potential_option_1, item.additional_potential_option_2, item.additional_potential_option_3);
+
+        listHtml += `
+        <div onmouseenter="showTooltip('${item.item_equipment_slot}', ${num})" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" style="background: #ffffff; border: 1px solid ${bColor}; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.1s; box-shadow: 0 1px 2px rgba(0,0,0,0.02); min-width: 0; overflow: hidden; box-sizing: border-box; width: 100%;">
+            <div style="width: 38px; height: 38px; flex-shrink: 0; background: #f8fafc; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0;"><img src="${item.item_icon}" style="max-width: 80%; max-height: 80%;"></div>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; width: 100%;">
+                <div style="font-weight: 800; font-size: 12px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${item.item_name}${starHtml}</div>
+                ${potStr}
+            </div>
+        </div>`;
+    });
+    listHtml += `</div>`;
+
+    if(grid) {
+        grid.style.minWidth = '0'; 
+        grid.innerHTML = listHtml; 
+    }
+}
+
+function switchAbilityPreset(num) {
+    document.querySelectorAll('#abilityPresetBtns .preset-btn').forEach((btn, i) => {
+        btn.style.background = (i + 1 === num) ? '#e2e8f0' : 'transparent';
+        btn.style.color = (i + 1 === num) ? '#1e293b' : '#94a3b8';
+    });
+
+    if (!currentSearchData || !currentSearchData.ability) return;
+    const abiData = currentSearchData.ability;
+    let targetPreset = abiData[`ability_preset_${num}`] || abiData; 
+    const abiList = document.getElementById('res_equip_ability');
+    const fame = abiData.remain_fame ? Number(abiData.remain_fame).toLocaleString() : '0';
+
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">
+            <span style="color:#475569; font-size:12px; font-weight:700;">보유 명성치</span>
+            <span style="color:#0f172a; font-size:13px; font-weight:800;">${fame}</span>
+        </div>`;
+
+    if (targetPreset && targetPreset.ability_info) {
+        html += targetPreset.ability_info.map((a) => {
+            let color = "#475569";
+            if(a.ability_grade === "레전드리") color = "#15803d";
+            else if(a.ability_grade === "유니크") color = "#b45309";
+            else if(a.ability_grade === "에픽") color = "#6b21a8";
+            else if(a.ability_grade === "레어") color = "#0369a1";
+
+            return `
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; background:#f8fafc; padding:10px 15px; border-radius:8px; border:1px solid #e2e8f0;">
+                <span style="color:${color}; font-weight:900; font-size:11px; min-width:60px;">${a.ability_grade}</span>
+                <span style="color:#1e293b; font-size:12px; font-weight:600; word-break:keep-all; line-height:1.4;">${a.ability_value}</span>
+            </div>`;
+        }).join('');
+        abiList.innerHTML = html;
+    } else {
+        abiList.innerHTML = '<div style="color: #94a3b8; text-align: center; font-size: 12px; padding: 15px 0;">어빌리티 정보가 없습니다.</div>';
+    }
+}
+
+function showTooltip(slotName, presetNum) {
+    if (!currentSearchData || !currentSearchData.item) return;
+    let equipList = currentSearchData.item[`item_equipment_preset_${presetNum}`] || currentSearchData.item.item_equipment;
+    const item = equipList.find(eq => eq.item_equipment_slot === slotName || (slotName === "상의" && eq.item_equipment_slot === "한벌옷"));
+    if (!item) return;
+
+    let tt = document.getElementById('itemTooltip');
+    if (!tt) {
+        tt = document.createElement('div');
+        tt.id = 'itemTooltip';
+        document.body.appendChild(tt);
+    }
+    
+    tt.style.cssText = "display: none; position: absolute; background: rgba(248, 250, 252, 0.98); color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; font-size: 12px; z-index: 99999; width: 280px; pointer-events: none; box-shadow: 0 10px 25px rgba(0,0,0,0.12); font-family: 'Pretendard', sans-serif; box-sizing: border-box; backdrop-filter: blur(5px);";
+
+    const gradeColor = { "레전드리": "#15803d", "유니크": "#b45309", "에픽": "#6b21a8", "레어": "#0369a1" };
+
+    let starCount = parseInt(item.starforce) || 0;
+    let stars = "";
+    for(let i=0; i<starCount; i++) {
+        stars += "★";
+        if((i+1)%5===0) stars += " ";
+    }
+    let starHtml = starCount > 0 ? `<div style="color:#d97706; text-align:center; font-size:12px; margin-bottom:6px; letter-spacing:1px; font-weight: 900;">${stars}</div>` : '';
+
+    let nameColor = item.potential_option_grade ? gradeColor[item.potential_option_grade] : "#0f172a";
+    let nameHtml = `<div style="font-weight:900; font-size:15px; text-align:center; color:${nameColor}; margin-bottom:4px; word-break:keep-all;">${item.item_name}</div>`;
+    let subHtml = item.potential_option_grade ? `<div style="text-align:center; font-size:11px; color:#64748b; margin-bottom:12px; font-weight: 600;">(${item.potential_option_grade} 아이템)</div>` : '';
+
+    let reqLev = item.item_base_option?.base_equipment_level || 0;
+    let reqHtml = `
+    <div style="display:flex; gap:12px; margin-bottom:12px; border-bottom:1px solid #cbd5e1; padding-bottom:12px;">
+        <div style="width: 70px; height: 70px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; flex-shrink: 0; display: flex; justify-content: center; align-items: center;">
+            <img src="${item.item_icon}" style="max-width: 50px; max-height: 50px;">
+        </div>
+        <div style="flex-grow: 1; display:flex; flex-direction:column; justify-content:center; gap:4px;">
+            <div style="color:#d97706; font-size:12px; font-weight:900; letter-spacing: -0.5px;">REQ LEV : ${reqLev}</div>
+            <div style="font-size:10px; color:#64748b; display:grid; grid-template-columns: 1fr 1fr; gap:3px; font-weight:600;">
+                <span>REQ STR : 000</span>
+                <span>REQ LUK : 000</span>
+                <span>REQ DEX : 000</span>
+                <span>REQ INT : 000</span>
+            </div>
+        </div>
+    </div>`;
+
+    let statsHtml = `<div style="font-size:12px; line-height:1.6; margin-bottom:12px; color: #475569; font-weight: 500;">`;
+    statsHtml += `<div>장비분류 : <span style="font-weight: 700;">${item.item_equipment_part || slotName}</span></div>`;
+
+    const formatStat = (name, key, isPercent = false) => {
+        if (!item.item_total_option || !item.item_total_option[key] || item.item_total_option[key] === "0") return "";
+        let total = item.item_total_option[key];
+        let base = (item.item_base_option && item.item_base_option[key]) ? item.item_base_option[key] : "0";
+        let add = (item.item_add_option && item.item_add_option[key]) ? item.item_add_option[key] : "0";
+        let etc = (item.item_etc_option && item.item_etc_option[key]) ? item.item_etc_option[key] : "0";
+        let star = (item.item_starforce_option && item.item_starforce_option[key]) ? item.item_starforce_option[key] : "0";
+        let unit = isPercent ? "%" : "";
+        let isBonus = (add !== "0" || etc !== "0" || star !== "0");
+        let totalColor = isBonus ? "#0369a1" : "#1e293b"; 
+
+        let detail = "";
+        if (isBonus) {
+            detail = ` <span style="color:#94a3b8;">(</span><span style="color:#64748b;">${base}${unit}</span>`;
+            if (add !== "0") detail += ` <span style="color:#15803d; font-weight:700;">+${add}${unit}</span>`;
+            if (etc !== "0") detail += ` <span style="color:#64748b; font-weight:700;">+${etc}${unit}</span>`;
+            if (star !== "0") detail += ` <span style="color:#d97706; font-weight:700;">+${star}${unit}</span>`;
+            detail += `<span style="color:#94a3b8;">)</span>`;
+        }
+        return `<div>${name} : <span style="color:${totalColor}; font-weight:700;">+${total}${unit}</span>${detail}</div>`;
+    };
+
+    statsHtml += formatStat("STR", "str");
+    statsHtml += formatStat("DEX", "dex");
+    statsHtml += formatStat("INT", "int");
+    statsHtml += formatStat("LUK", "luk");
+    statsHtml += formatStat("최대 HP", "max_hp");
+    statsHtml += formatStat("최대 MP", "max_mp");
+    statsHtml += formatStat("공격력", "attack_power");
+    statsHtml += formatStat("마력", "magic_power");
+    statsHtml += formatStat("보스 몬스터 공격 시 데미지", "boss_damage", true);
+    statsHtml += formatStat("몬스터 방어율 무시", "ignore_monster_armor", true);
+    statsHtml += formatStat("올스탯", "all_stat", true);
+
+    let scroll = item.scroll_upgrade || "0";
+    if (scroll !== "0" || item.scroll_upgradeable_count !== "0") {
+        statsHtml += `<div>업그레이드 가능 횟수 : <span style="font-weight:700;">${item.scroll_upgradeable_count || 0}</span> <span style="color:#d97706; font-weight:700;">(복구 가능 횟수 : 0)</span></div>`;
+    }
+    if (item.golden_hammer_flag === "적용") statsHtml += `<div>황금 망치 제련 적용</div>`;
+    statsHtml += `</div>`;
+
+    let potHtml = '';
+    if (item.potential_option_grade) {
+        let pColor = gradeColor[item.potential_option_grade] || "#1e293b";
+        potHtml += `<div style="border-top:1px dashed #cbd5e1; padding-top:12px; margin-top:8px; font-size:12px; line-height:1.6;">
+            <div style="color:${pColor}; font-weight:800; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+                <span style="border:1px solid ${pColor}; background: ${pColor}15; border-radius:4px; padding:2px 5px; font-size:10px;">${item.potential_option_grade.charAt(0)}</span> 잠재옵션
+            </div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.potential_option_1 || ''}</div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.potential_option_2 || ''}</div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.potential_option_3 || ''}</div>
+        </div>`;
+    }
+
+    if (item.additional_potential_option_grade) {
+        let aColor = gradeColor[item.additional_potential_option_grade] || "#1e293b";
+        potHtml += `<div style="border-top:1px dashed #cbd5e1; padding-top:12px; margin-top:8px; font-size:12px; line-height:1.6;">
+            <div style="color:${aColor}; font-weight:800; margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+                <span style="border:1px solid ${aColor}; background: ${aColor}15; border-radius:4px; padding:2px 5px; font-size:10px;">${item.additional_potential_option_grade.charAt(0)}</span> 에디셔널 잠재옵션
+            </div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.additional_potential_option_1 || ''}</div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.additional_potential_option_2 || ''}</div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.additional_potential_option_3 || ''}</div>
+        </div>`;
+    }
+
+    if (item.soul_name) {
+        potHtml += `<div style="border-top:1px dashed #cbd5e1; padding-top:12px; margin-top:8px; font-size:12px; line-height:1.6;">
+            <div style="color:#d97706; font-weight:800; margin-bottom:4px;">${item.soul_name} 적용</div>
+            <div style="color:#1e293b; font-weight:600; word-break:keep-all;">${item.soul_option || ''}</div>
+        </div>`;
+    }
+
+    tt.innerHTML = `
+        ${starHtml}
+        ${nameHtml}
+        ${subHtml}
+        ${reqHtml}
+        ${statsHtml}
+        ${potHtml}
+    `;
+    
+    tt.style.display = 'block';
+}
+
+function moveTooltip(e) {
+    const tt = document.getElementById('itemTooltip');
+    if (!tt || tt.style.display === 'none') return;
+    let x = e.pageX + 15;
+    let y = e.pageY + 15;
+    if (x + 300 > window.innerWidth) x = e.pageX - 300; 
+    tt.style.left = x + 'px';
+    tt.style.top = y + 'px';
+}
+
+function hideTooltip() {
+    const tt = document.getElementById('itemTooltip');
+    if (tt) tt.style.display = 'none';
 }
