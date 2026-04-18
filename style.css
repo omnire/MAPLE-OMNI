@@ -32,7 +32,7 @@ body {
     gap: 20px; 
 }
 
-.container { flex-grow: 1; max-width: 1000px; }
+.container { flex-grow: 1; max-width: 1000px; } 
 
 /* --------------------------------------------------
     2. 사이드바 및 카드 레이아웃 (Layout & Cards)
@@ -383,4 +383,40 @@ nav {
     .sell-row select, .sell-row input { width: 100% !important; height: 40px; }
     .sub-record-list { grid-template-columns: 1fr; }
     .monthly-summary { grid-template-columns: 1fr; }
+}
+
+/* --------------------------------------------------
+    🌟 12. 장비 프리셋 텍스트 팽창 방지 및 쪼그라듦 완벽 해결
+-------------------------------------------------- */
+.detail-tab-content {
+    flex: 1 !important;
+    min-width: 0 !important; 
+    width: 100%; /* 부모 영역을 확실하게 차지하도록 추가 */
+}
+
+#res_itemGrid {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#res_itemGrid > div {
+    display: grid !important;
+    /* 핵심 수정: 카드가 최소 260px의 너비를 보장받아 쪼그라들지 않습니다! */
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important; 
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+#res_itemGrid > div > div {
+    min-width: 0 !important; 
+    box-sizing: border-box !important;
+    overflow: hidden !important; 
+    width: 100% !important;
+}
+
+/* 모바일 화면에서는 장비 카드를 1열로 보여주기 */
+@media (max-width: 768px) {
+    #res_itemGrid > div {
+        grid-template-columns: 1fr !important;
+    }
 }
