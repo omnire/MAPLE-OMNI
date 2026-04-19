@@ -8,14 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <script>
-  (function() {
-    const page = sessionStorage.getItem('omni_current_page');
-    if(page && page !== 'portal') {
-      document.write('<style>#mainPortal { display: none !important; }</style>');
-    }
+    /* 페이지 새로고침 시 포털 화면을 유지하기 위한 스크립트 */
+    (function() {
+        const page = sessionStorage.getItem('omni_current_page');
+        if(page && page !== 'portal') {
+            document.write('<style>#mainPortal { display: none !important; }</style>');
+        }
     })();
     </script>
-
 </head>
 <body>
 
@@ -93,43 +93,59 @@
 
     <div id="searchPageContent" style="display: none; width: 100%; max-width: 1200px; margin: 40px auto; padding: 0 20px; box-sizing: border-box;">
         
-        <div style="display: flex; justify-content: flex-start; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: flex-start; margin-bottom: 15px; gap: 12px;">
             <button onclick="backToPortal()" style="background: #334155; color: white; border: 1px solid #1e293b; padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#334155'">
                 <span style="font-size: 16px;">🏠</span> 메인 화면으로 돌아가기
             </button>
+            <button onclick="openOmniBuilder()" style="background: linear-gradient(135deg, #ff9100, #ff6b10); color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 900; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 4px 12px rgba(255, 145, 0, 0.25);">
+                <span style="font-size: 16px;">🛠️</span> Omni Builder
+            </button>
         </div>
 
-        <div style="background: white; border-radius: 20px; padding: 30px; border: 1px solid #edf2f7; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 25px;">
-            <div style="display: flex; align-items: center; gap: 30px;">
-                <div style="flex-shrink: 0; width: 160px; height: 160px; background: #f8fafc; border-radius: 80px; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    <img src="" id="res_profileImg" style="width: auto; height: auto; transform: scale(1.2); transform-origin: center center;">
+        <div style="background: white; border-radius: 20px; padding: 15px 30px; border: 1px solid #edf2f7; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div style="flex-shrink: 0; width: 120px; height: 120px; background: #f8fafc; border-radius: 60px; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; position: relative;">
+                    <div id="res_serverMark" style="position: absolute; bottom: 0; left: 0; width: 32px; height: 32px; background: white; border-radius: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; z-index: 2;">
+                        <span style="font-size: 16px;">🌐</span> 
+                    </div>
+                    <div id="res_guildMark" style="position: absolute; bottom: 0; right: 0; width: 32px; height: 32px; background: white; border-radius: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; z-index: 2;">
+                        <span style="font-size: 16px;">🏰</span>
+                    </div>
+                    <div style="width: 100%; height: 100%; border-radius: 60px; overflow: hidden; display: flex; align-items: center; justify-content: center; z-index: 1; background: #f8fafc;">
+                        <img src="" id="res_profileImg" style="width: 200%; height: auto; object-fit: contain; display: block; margin: 0 auto; transform: translateY(-5px);">
+                    </div>
                 </div>
                 
                 <div style="flex-grow: 1; display: flex; flex-direction: column;">
-                    <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px;">
-                        <h3 id="res_profileName" style="margin: 0; font-size: 32px; font-weight: 900; color: #0f172a;">-</h3>
+                    <div style="display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px;">
+                        <h3 id="res_profileName" style="margin: 0; font-size: 26px; font-weight: 900; color: #0f172a;">-</h3>
                         <div id="res_worldGuild" style="font-size: 16px; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 8px;">-</div>
                         <button id="btn_favorite" onclick="toggleFavorite()" style="margin-left: auto; background: white; border: 2px solid #ff9100; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 800; color: #ff9100; transition: 0.2s;">⭐ 즐겨찾기 추가</button>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; font-size: 13px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; font-size: 13px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0;">
                         <div>
                             <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">📊 종합 랭킹</div>
-                            <div style="color: #1e293b; font-weight: 700;"><span id="res_rank_total" style="color:#a29bfe;">---</span>위</div>
+                            <div style="color: #1e293b; font-weight: 700;"><span id="res_rank_total" style="color:#a29bfe;">---</span></div>
                         </div>
                         <div>
                             <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">🌐 서버 랭킹</div>
-                            <div style="color: #1e293b; font-weight: 700;"><span id="res_rank_world" style="color:#a29bfe;">---</span>위</div>
+                            <div style="color: #1e293b; font-weight: 700;"><span id="res_rank_world" style="color:#a29bfe;">---</span></div>
                         </div>
                         <div>
                             <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">🥋 무릉도장</div>
                             <div style="color: #1e293b; font-weight: 700;"><span id="res_dojang_floor" style="color:#8b5cf6;">최고기록: 없음</span></div>
                         </div>
                         <div>
-                            <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">⚔️ 전투 정보</div>
-                            <div style="color: #1e293b; font-weight: 700; margin-bottom: 4px;">전투력: <span id="res_power_top" style="color:#ff9100;">0</span></div>
-                            <div style="color: #64748b; font-size:11px;"><span id="res_job_level">--- / Lv.---</span></div>
-                        </div>
+                           <div style="flex: 1;">
+    <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">⚔️ 전투 정보</div>
+    <div style="color: #1e293b; font-weight: 700; margin-bottom: 4px;">
+        전투력: <span id="res_power_top_val" style="color:#ff9100;">0</span>
+    </div>
+    <div style="color: #64748b; font-size:11px;">
+        <span id="res_job_level">--- / Lv.---</span>
+    </div>
+</div>
                     </div>
                 </div>
             </div>
@@ -177,7 +193,8 @@
                         <button class="preset-btn" onclick="switchItemPreset(3)">3</button>
                     </div>
                 </div>
-                <div id="res_itemGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: white; padding: 15px; border-radius: 12px; border: 1px solid #edf2f7; max-width: 280px; margin: 0 auto;"></div>
+                <div id="res_itemGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: white; padding: 15px; border-radius: 12px; border: 1px solid #edf2f7; max-width: 280px; margin: 0 auto; margin-bottom: 20px;"></div>
+                <div id="res_equipDetailList" style="width: 100%;"></div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 20px;">
@@ -272,15 +289,51 @@
 
             <div id="page_2" style="display:none;">
                 <div id="monthlySummaryArea" class="monthly-summary"></div>
-                <div class="filter-box" style="background:white; padding:15px; border-radius:12px; border:1px solid var(--border); margin-bottom:15px; display:flex; align-items:center;">
-                    <input type="date" id="dateFilter" onchange="renderRecords()" style="padding:8px; border:1px solid var(--border); border-radius:8px; margin-right:10px;">
-                    <button onclick="resetDateFilter()" style="padding:8px 12px; background:#eee; border:none; border-radius:8px; cursor:pointer; font-size:11px;">전체 보기</button>
-                    <div id="historyTabContainer" style="display:flex; gap:5px; flex-grow:1; justify-content:flex-end;"></div>
-                </div>
-                <div id="recordDisplayArea"></div>
-            </div> 
 
-           <div id="page_3" style="display: none; padding-top: 15px;">
+                <div style="background: white; padding: 25px; border-radius: 15px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box; margin-bottom: 20px;">
+                    
+                    <h3 style="margin: 0 0 25px 0; color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 800;">
+                        <span>📊</span> 사냥 통합 기록지
+                    </h3>
+                    
+                    <div class="filter-box" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: flex-start;">
+                        <input type="date" id="dateFilter" onchange="renderRecords()" 
+                               style="width: 180px; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #dfe6e9; font-family: 'Pretendard', sans-serif; font-size: 14px; box-sizing: border-box; outline: none;">
+                        
+                        <button onclick="resetDateFilter()" 
+                                style="height: 40px; padding: 0 20px; background: #f1f2f6; border: 1px solid #dfe6e9; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; color: #475569; white-space: nowrap; transition: 0.2s;">
+                            전체보기
+                        </button>
+                        
+                        <div id="historyTabContainer" style="display: flex; gap: 5px; margin-left: auto;"></div>
+                    </div>
+
+                    <div style="overflow-x: auto; width: 100%; border-radius: 10px; border: 1px solid #f1f5f9; background: #ffffff;">
+                        <table class="record-table" style="width: 100%; border-collapse: collapse; min-width: 900px; table-layout: fixed;">
+                            <thead style="background: #f8fafc;">
+                                <tr>
+                                    <th style="width: 110px; padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">날짜</th>
+                                    <th style="width: 130px; padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">캐릭터명</th>
+                                    <th style="padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">사냥터</th>
+                                    <th style="width: 130px; padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">획득 메소</th>
+                                    <th style="width: 100px; padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">획득 경험치</th>
+                                    <th style="width: 100px; padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">코젬/조각</th>
+                                    <th style="width: 150px; padding: 12px; border-bottom: 2px solid var(--accent); color: #64748b; font-size: 13px;">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 50px; color: #94a3b8; font-weight: bold;">
+                                        사냥 데이터를 불러오는 중입니다... 🍁
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page_3" style="display: none; padding-top: 15px;">
                 <style>
                     .boss-chip { display: flex; align-items: center; justify-content: center; padding: 8px 4px; border-radius: 4px; font-size: 11px; font-weight: 500; text-align: center; cursor: pointer; transition: 0.2s; background: #ffffff; border: 1px solid #e2e8f0; color: #64748b; user-select: none; width: 100%; box-sizing: border-box; }
                     .boss-chip:hover { background: #f8f9fa; border-color: #cbd5e1; }
@@ -330,14 +383,17 @@
                     </div>
 
                     <div style="display: flex; justify-content: center;">
-                            <div style="background: #f8fafc; border: 1px solid #f1f5f9; padding: 12px 30px; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 10px; color: #94a3b8; font-weight: 600; margin-bottom: 2px;">예상 총 순수익</div>
-                                <div id="totalWeeklyProfit" style="font-size: 24px; font-weight: 700; color: #334155; letter-spacing: -0.5px; font-family: 'Pretendard', sans-serif;">0 메소</div>
-                            </div>
+                        <div style="background: #f8fafc; border: 1px solid #f1f5f9; padding: 12px 30px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 10px; color: #94a3b8; font-weight: 600; margin-bottom: 2px;">예상 총 순수익</div>
+                            <div id="totalWeeklyProfit" style="font-size: 24px; font-weight: 700; color: #334155; letter-spacing: -0.5px; font-family: 'Pretendard', sans-serif;">0 메소</div>
                         </div>
                     </div>
                 </div>
-            </div> <aside class="right-sidebar">
+            </div>
+            
+        </div> 
+        
+        <aside class="right-sidebar">
             <div class="attendance-card">
                 <h4>📅 재획 출석기록부</h4>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -349,6 +405,8 @@
                 <div style="margin-top: 15px; font-size: 10px; color: #999; text-align: right;">오늘 사냥 시 자동 출석 ✅</div>
             </div>
         </aside>
+
+    </div> 
 
     <div id="customAlert" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(45, 52, 70, 0.9); color: white; padding: 12px 25px; border-radius: 50px; font-weight: bold; z-index: 10000; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: fadeInUp 0.3s ease;">
         <span id="alertMessage"></span>
@@ -429,6 +487,86 @@
 
             <button onclick="closeOcrModal()" style="width: 100%; padding: 14px; background: #f1f2f6; color: #2d3436; border: none; border-radius: 12px; margin-top: 20px; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#dfe6e9'" onmouseout="this.style.background='#f1f2f6'">취소 및 닫기</button>
         </div>
+    </div>
+
+    <div id="omniBuilderSection" style="display: none; width: 100%; max-width: 1200px; margin: 20px auto; padding: 0 20px; box-sizing: border-box;">
+        
+        <div style="margin-bottom: 25px; border-left: 5px solid #ff9100; padding-left: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 24px; font-weight: 900; color: #1e293b;">
+                🛠️ Omni Builder <span style="font-size: 14px; font-weight: 500; color: #64748b; margin-left: 10px;">나만의 최적 템셋팅 시뮬레이터</span>
+            </h2>
+            
+            <div id="builder_preset_selector" style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; gap: 4px; margin-right: 10px;">
+                <button onclick="changeBuilderPreset(1)" class="builder-preset-btn active" style="padding: 6px 12px; border: none; border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer; background: #ffffff; color: #ff9100; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">인게임 1번</button>
+                <button onclick="changeBuilderPreset(2)" class="builder-preset-btn" style="padding: 6px 12px; border: none; border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer; background: transparent; color: #64748b;">인게임 2번</button>
+                <button onclick="changeBuilderPreset(3)" class="builder-preset-btn" style="padding: 6px 12px; border: none; border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer; background: transparent; color: #64748b;">인게임 3번</button>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 280px 40px 280px 1fr; gap: 15px; align-items: center;">
+            
+            <div style="background: white; border-radius: 20px; padding: 20px; border: 1px solid #edf2f7; box-shadow: 0 4px 15px rgba(0,0,0,0.02); align-self: start;">
+                <h4 style="margin: 0 0 15px 0; font-size: 14px; color: #64748b; text-align: center;">🔒 현재 착용 장비</h4>
+                <div id="builder_current_grid" class="maple-inventory-grid"></div>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: center; font-size: 24px; color: #cbd5e1;">
+                ▶
+            </div>
+
+            <div style="background: white; border-radius: 20px; padding: 20px; border: 2px solid #ff9100; box-shadow: 0 4px 20px rgba(255,145,0,0.1); align-self: start;">
+                <h4 style="margin: 0 0 15px 0; font-size: 14px; color: #ff9100; text-align: center; font-weight: 800;">✨ 변경될 장비</h4>
+                <div id="builder_target_grid" class="maple-inventory-grid"></div>
+            </div>
+
+            <div id="builder_editor_panel" style="background: white; border-radius: 20px; padding: 25px; border: 1px solid #edf2f7; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 500px; align-self: start;">
+                <div id="editor_placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: #cbd5e1; height: 100%; min-height: 400px;">
+                    <span style="font-size: 40px;">🖱️</span>
+                    <p style="margin-top: 15px; font-weight: 600; text-align: center; line-height: 1.5;">시뮬레이션 장비 탭에서<br>변경할 슬롯을 선택해주세요.</p>
+                </div>
+                
+                <div id="editor_form" style="display: none;">
+                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
+                        <div id="edit_item_icon" style="width: 60px; height: 60px; background: #f8fafc; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0;"></div>
+                        <div style="flex-grow: 1;">
+                            <h3 id="edit_slot_name" style="margin: 0; font-size: 18px; color: #1e293b;">아이템 설정</h3>
+                            
+                            <div id="builder_event_alert" style="display: none; background: #fff1f2; border: 1px solid #fda4af; border-radius: 10px; padding: 12px; margin-top: 10px;">
+                                <div style="color: #e11d48; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                                    <span>⚠️ 기간제(도전자) 장비 감지</span>
+                                </div>
+                                <p style="color: #475569; font-size: 11px; margin: 5px 0 0 0; line-height: 1.4;">
+                                    이 장비는 기간이 만료되면 사라지는 아이템입니다.<br>
+                                    <b>영구 장비(앱솔랩스/아케인 등)</b>로 교체 시 스펙 변화를 확인하세요!
+                                </p>
+                            </div>
+                            
+                            <select id="edit_base_item" class="input-box" style="width: 100%; margin-top: 5px; padding: 5px; font-size: 13px;">
+                                <option value="none">아이템 선택</option>
+                                <option value="eternal">에테르넬 메이지숄더</option>
+                                <option value="arcane">아케인셰이드 메이지숄더</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="editor_inputs" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 25px; background: #1e293b; border-radius: 20px; padding: 25px; display: flex; justify-content: space-around; align-items: center; color: white;">
+            <div style="text-align: center;">
+                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 5px;">최종 전투력 변화</div>
+                <div id="build_total_power" style="font-size: 32px; font-weight: 900; color: #00ff88;">+ 0</div>
+            </div>
+            <div style="width: 1px; height: 40px; background: #334155;"></div>
+            <div style="text-align: center;">
+                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 5px;">주스탯 변화</div>
+                <div id="build_stat_diff" style="font-size: 20px; font-weight: 700;">+ 0</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="itemTooltip" style="display: none; position: absolute; z-index: 10000; pointer-events: none;">
     </div>
 
     <script src="script.js"></script>
