@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <script>
-    /* 페이지 새로고침 시 포털 화면을 유지하기 위한 스크립트 */
+    /* 페이지 새로고침 시 기존에 보던 화면(예: 사냥 모드)을 유지하기 위한 스크립트 */
     (function() {
         const page = sessionStorage.getItem('omni_current_page');
         if(page && page !== 'portal') {
@@ -137,15 +137,14 @@
                             <div style="color: #1e293b; font-weight: 700;"><span id="res_dojang_floor" style="color:#8b5cf6;">최고기록: 없음</span></div>
                         </div>
                         <div>
-                           <div style="flex: 1;">
-    <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">⚔️ 전투 정보</div>
-    <div style="color: #1e293b; font-weight: 700; margin-bottom: 4px;">
-        전투력: <span id="res_power_top_val" style="color:#ff9100;">0</span>
-    </div>
-    <div style="color: #64748b; font-size:11px;">
-        <span id="res_job_level">--- / Lv.---</span>
-    </div>
-</div>
+                            <div style="color: #64748b; font-weight: 800; margin-bottom: 8px; font-size: 12px;">⚔️ 전투 정보</div>
+                            <div style="color: #1e293b; font-weight: 700; margin-bottom: 4px;">
+                                전투력: <span id="res_power_top_val" style="color:#ff9100;">0</span>
+                            </div>
+                            <div style="color: #64748b; font-size:11px;">
+                                <span id="res_job_level">--- / Lv.---</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -160,7 +159,6 @@
         </div>
 
         <div id="charDetailContainer" style="display: none; display: grid; grid-template-columns: 280px 1fr 280px; gap: 20px; align-items: start;">
-            
             <div style="display: flex; flex-direction: column; gap: 20px;">
                 <div style="background: white; border-radius: 20px; padding: 25px; border: 1px solid #edf2f7; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
                     <small style="color: #94a3b8; font-size: 11px; font-weight: 800; text-transform: uppercase;">현재 전투력</small>
@@ -193,8 +191,9 @@
                         <button class="preset-btn" onclick="switchItemPreset(3)">3</button>
                     </div>
                 </div>
-                <div id="res_itemGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: white; padding: 15px; border-radius: 12px; border: 1px solid #edf2f7; max-width: 280px; margin: 0 auto; margin-bottom: 20px;"></div>
-                <div id="res_equipDetailList" style="width: 100%;"></div>
+                
+                <div id="res_itemGrid"></div>
+                <div id="res_equipDetailList"></div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 20px;">
@@ -214,13 +213,11 @@
                     </div>
                 </div>
             </div>
-
         </div> 
+        
         <div id="searchPlaceholder" style="text-align: center; color: #a0aec0; padding-top: 150px; font-weight: 500;">캐릭터를 검색하면 여기에 정보가 표시됩니다. 🍁</div>
     </div>
-
     <div id="appContent" style="display: none; width: 100%; justify-content: center; gap: 20px;">
-
         <aside class="sidebar">
             <div class="char-card">
                 <div class="char-img-box">
@@ -407,7 +404,6 @@
         </aside>
 
     </div> 
-
     <div id="customAlert" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(45, 52, 70, 0.9); color: white; padding: 12px 25px; border-radius: 50px; font-weight: bold; z-index: 10000; box-shadow: 0 4px 15px rgba(0,0,0,0.2); animation: fadeInUp 0.3s ease;">
         <span id="alertMessage"></span>
     </div>
