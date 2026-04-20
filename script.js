@@ -1,24 +1,51 @@
 /**
  * ============================================================================
  * 🍁 MAPLE OMNI V13.6.7 - 완벽 통합본
- * (전투력 미반영 버그 수정, 중복 ID 예외 처리, 콤마(,) 계산 오류 완벽 해결)
+ * (전투력 미반영 버그 수정, 1열 장비 리스트, 빌더 직업군 DB 연동 완료)
  * ============================================================================
  */
 
 // 🌐 현재 검색된 캐릭터의 상세 데이터를 임시 저장하는 변수입니다.
-// 초보자 가이드: 다른 함수들에서도 이 데이터를 쉽게 꺼내 쓸 수 있도록 맨 위에 전역 변수로 선언합니다.
 let currentSearchData = null; 
 
-// 🔑 넥슨 OpenAPI 발급 키 (외부 유출 주의)
+// 📦 Omni Builder 전 직업군 통합 데이터베이스 (여기가 파일 최상단입니다!)
+const OMNI_ITEM_DB = {
+    "전사": {
+        "arcane": { name: "아케인셰이드 나이트", img: "https://lwi.nexon.com/maplestory/common/item/1152191.png" },
+        "eternal": { name: "에테르넬 나이트", img: "https://lwi.nexon.com/maplestory/common/item/1152200.png" },
+        "absol": { name: "앱솔랩스 나이트", img: "https://lwi.nexon.com/maplestory/common/item/1152155.png" }
+    },
+    "마법사": {
+        "arcane": { name: "아케인셰이드 메이지", img: "https://lwi.nexon.com/maplestory/common/item/1152192.png" },
+        "eternal": { name: "에테르넬 메이지", img: "https://lwi.nexon.com/maplestory/common/item/1152201.png" },
+        "absol": { name: "앱솔랩스 메이지", img: "https://lwi.nexon.com/maplestory/common/item/1152156.png" }
+    },
+    "궁수": {
+        "arcane": { name: "아케인셰이드 아처", img: "https://lwi.nexon.com/maplestory/common/item/1152193.png" },
+        "eternal": { name: "에테르넬 아처", img: "https://lwi.nexon.com/maplestory/common/item/1152202.png" },
+        "absol": { name: "앱솔랩스 아처", img: "https://lwi.nexon.com/maplestory/common/item/1152157.png" }
+    },
+    "도적": {
+        "arcane": { name: "아케인셰이드 쉐도우", img: "https://lwi.nexon.com/maplestory/common/item/1152194.png" },
+        "eternal": { name: "에테르넬 쉐도우", img: "https://lwi.nexon.com/maplestory/common/item/1152203.png" },
+        "absol": { name: "앱솔랩스 쉐도우", img: "https://lwi.nexon.com/maplestory/common/item/1152158.png" }
+    },
+    "해적": {
+        "arcane": { name: "아케인셰이드 파이렛", img: "https://lwi.nexon.com/maplestory/common/item/1152195.png" },
+        "eternal": { name: "에테르넬 파이렛", img: "https://lwi.nexon.com/maplestory/common/item/1152204.png" },
+        "absol": { name: "앱솔랩스 파이렛", img: "https://lwi.nexon.com/maplestory/common/item/1152159.png" }
+    }
+};
+
+// 🔑 넥슨 OpenAPI 발급 키
 const API_KEY = "test_b4b72659365dd8f8e050630f7d05b609548335ee63fb773f616d4a4c479769e7efe8d04e6d233bd35cf2fabdeb93fb0d";
 
 // ⏱️ 사냥 및 도핑 타이머 관련 전역 변수 설정
-// 초보자 가이드: 시간을 계산하고 일시정지 상태를 기억하는 변수들입니다.
 let timerId = null, timeLeft = 1800, isPaused = false, endTime = null; 
 let buffTimerId = null, buffTimeLeft = 0; 
-let currentOcrMode = 'hunt'; // OCR(이미지 인식) 기본 모드 설정
+let currentOcrMode = 'hunt'; 
 
-// 📊 스탯 및 도핑 리스트 (이름, 지속시간, 추가 메소/경험치 수치)
+// 📊 스탯 및 도핑 리스트 
 const statItems = ['장비 아이템', '유니온 공격대', '어빌리티', '아티팩트', '스킬'];
 const buffs = [
     { name: 'VIP 버프', d: 0, m: 0 }, { name: '추가 경험치 쿠폰(50%)', d: 0, m: 0 }, { name: '경험치 3배 쿠폰', d: 0, m: 0 },
@@ -30,9 +57,9 @@ const sellItems = ["솔 에르다 조각", "코어 젬스톤", "어센틱 심볼
 // 📝 사냥 기록을 저장하는 배열 및 로컬 스토리지 연동
 let subHistory = {1:[], 2:[], 3:[], 4:[]}; 
 let huntRecords = JSON.parse(localStorage.getItem('maple_hunt_records')) || []; 
-let currentIdx = 1; // 현재 선택된 탭(캐릭터) 번호
+let currentIdx = 1; 
 
-// 📅 오늘 날짜를 'YYYY-M-D' 형식으로 가져오는 함수
+// 📅 오늘 날짜
 function getTodayStr() {
     const today = new Date();
     return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
@@ -42,7 +69,6 @@ function getTodayStr() {
 // 🚪 화면 이동 함수 (포털, 사냥모드, 검색화면, 빌더 등)
 // ============================================================================
 
-// 🏠 메인 포털 화면으로 돌아가는 함수
 window.backToPortal = function(isPopState = false) {
     const elApp = document.getElementById('appContent');
     const elSearch = document.getElementById('searchPageContent');
@@ -62,7 +88,6 @@ window.backToPortal = function(isPopState = false) {
     if (!isPopState) history.pushState({ page: 'portal' }, "", "#portal");
 };
 
-// ⚔️ 사냥 모드(메인 앱)를 시작하는 함수
 window.startApp = function(isPopState = false) {
     const elPortal = document.getElementById('mainPortal');
     const elSearch = document.getElementById('searchPageContent');
@@ -85,7 +110,6 @@ window.startApp = function(isPopState = false) {
     if (!isPopState) history.pushState({ page: 'hunt' }, "", "#hunt");
 };
 
-// 🔍 캐릭터 상세 검색 결과 창을 여는 함수
 window.openSearchPage = function(isPopState = false) {
     const elApp = document.getElementById('appContent');
     const elPortal = document.getElementById('mainPortal');
@@ -104,9 +128,8 @@ window.openSearchPage = function(isPopState = false) {
     if (!isPopState) history.pushState({ page: 'search' }, "", "#search");
 };
 
-// 🔙 브라우저 뒤로가기 버튼 처리
 window.addEventListener('popstate', (event) => {
-    if (event.state) {
+    if (event.state && event.state.page) {
         if (event.state.page === 'hunt') window.startApp(true);
         else if (event.state.page === 'search') window.openSearchPage(true);
         else window.backToPortal(true);
@@ -115,11 +138,10 @@ window.addEventListener('popstate', (event) => {
     }
 });
 
-// ⏳ 초기 로딩 시 마지막으로 보던 화면을 복구합니다.
 window.addEventListener('DOMContentLoaded', () => {
     init(); 
-    
     const lastPage = sessionStorage.getItem('omni_current_page');
+    
     if (lastPage === 'hunt') {
         window.startApp(true); 
         history.replaceState({ page: 'hunt' }, "", "#hunt");
@@ -141,10 +163,9 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================================
-// 🛡️ API 데이터 불러오기 (캐릭터 정보 및 랭킹)
+// 🛡️ API 데이터 불러오기
 // ============================================================================
 
-// 🔄 사냥 기록지에 등록된 캐릭터들의 최신 정보를 동기화합니다.
 async function fetchMapleData(force = false) {
     const todayStr = getTodayStr();
     let syncedCount = 0;
@@ -184,7 +205,6 @@ async function fetchMapleData(force = false) {
     else if (force) showAlert("✨ 모든 캐릭터가 이미 최신 상태입니다.");
 }
 
-// 🖼️ 사냥모드 왼쪽 프로필 창에 정보를 그립니다.
 function renderHuntSidebar(basic, stat) {
     document.getElementById('profileImg').src = basic.character_image;
     document.getElementById('profileName').innerText = basic.character_name;
@@ -198,7 +218,6 @@ function renderHuntSidebar(basic, stat) {
         return found ? found.stat_value : "0";
     };
     
-    // 초보자 가이드: 숫자에 콤마가 있으면 에러가 날 수 있어 콤마를 제거한 뒤 변환합니다.
     const rawPower = String(getStatValue("전투력")).replace(/,/g, '');
     const rawAtk = String(getStatValue("최대 스탯 공격력")).replace(/,/g, '');
     
@@ -207,7 +226,6 @@ function renderHuntSidebar(basic, stat) {
     document.getElementById('stat_dmg').innerText = getStatValue("데미지") + "%";
 }
 
-// 텅 빈 프로필 초기화
 function resetHuntSidebar(fallbackName) {
     document.getElementById('profileImg').src = "https://open.api.nexon.com/static/maplestory/Character/Default.png";
     document.getElementById('profileName').innerText = fallbackName || "캐릭터명";
@@ -219,7 +237,6 @@ function resetHuntSidebar(fallbackName) {
     document.getElementById('stat_dmg').innerText = "-";
 }
 
-// 🏆 종합 랭킹 데이터를 불러오는 함수
 async function fetchRanking() {
     const tbody = document.getElementById('rankingBody');
     const dateSpan = document.getElementById('rankingDate');
@@ -242,7 +259,6 @@ async function fetchRanking() {
     } catch (e) { console.error(e); }
 }
 
-// 🏆 랭킹 데이터를 HTML 표에 그려줍니다.
 function renderRankingHtml(top10, dateStr) {
     const tbody = document.getElementById('rankingBody');
     const dateSpan = document.getElementById('rankingDate');
@@ -256,7 +272,6 @@ function renderRankingHtml(top10, dateStr) {
     if(dateSpan) dateSpan.innerText = `기준일: ${dateStr}`;
 }
 
-// 🔍 특정 캐릭터의 상세 정보를 조회합니다.
 async function searchCharacter(directName = null) {
     const input = typeof directName === 'string' ? directName : document.getElementById('portalSearchInput')?.value.trim();
     if (!input) return showAlert("❌ 캐릭터명을 입력해주세요!"); 
@@ -306,30 +321,24 @@ async function searchCharacter(directName = null) {
     }
 }
 
-// 🌟 검색된 캐릭터의 요약 정보(상단 프로필)를 채웁니다.
 function renderSearchSummary(basic, stat, dojang) {
-    // 1. 화면 레이아웃 초기화
     document.getElementById('searchPlaceholder').style.display = 'none';
     document.getElementById('detailTabMenu').style.display = 'flex';
     document.getElementById('charDetailContainer').style.display = 'grid';
     
-    // 2. 프로필 기본 정보 삽입
     document.getElementById('res_profileImg').src = basic.character_image;
     document.getElementById('res_profileName').innerText = basic.character_name;
     const guildName = basic.character_guild_name || '길드 없음';
     document.getElementById('res_worldGuild').innerText = `${basic.world_name} / ${guildName}`;
     
-    // 3. 전투력 데이터 추출 (stat 변수 사용)
     let powerValue = 0;
     if (stat && stat.final_stat) {
         const powerObj = stat.final_stat.find(s => s.stat_name === "전투력");
         if (powerObj) {
-            // 콤마 제거 후 순수 숫자로 변환
             powerValue = Number(String(powerObj.stat_value).replace(/,/g, ''));
         }
     }
     
-    // 4. [전투력 업데이트] 상단 카드와 좌측 상세창에 동시 적용
     const topCard = document.getElementById('res_power_top_val');
     if (topCard) {
         topCard.innerText = powerValue > 0 ? powerValue.toLocaleString() : "0";
@@ -340,13 +349,11 @@ function renderSearchSummary(basic, stat, dojang) {
         sideDetail.innerText = powerValue > 0 ? powerValue.toLocaleString() : "0";
     }
 
-    // 5. 직업 및 레벨 표시
     const jobLvl = document.getElementById('res_job_level');
     if (jobLvl) {
         jobLvl.innerText = `${basic.character_class} / Lv.${basic.character_level}`;
     }
 
-    // 6. 랭킹 계산 (기존 로직 유지)
     const seed = (basic.character_level * 13) + (parseInt(String(powerValue).slice(0, 5)) || 999);
     const totalRank = (seed * 7) % 50000 + 10;
     const jobRank = (seed * 3) % 1000 + 5;
@@ -355,20 +362,18 @@ function renderSearchSummary(basic, stat, dojang) {
     document.getElementById('res_rank_total').innerText = `전체 ${totalRank.toLocaleString()}위 / 직업별 ${jobRank.toLocaleString()}위`;
     document.getElementById('res_rank_world').innerText = `전체 ${worldRank.toLocaleString()}위 / 직업별 ${(jobRank%50)+1}위`;
     
-    // 7. 무릉도장 기록 표시
     const bestFloor = dojang && dojang.dojang_best_floor ? dojang.dojang_best_floor : 0;
     const dojangElem = document.getElementById('res_dojang_floor');
     if (dojangElem) {
         dojangElem.innerText = bestFloor > 0 ? `최고기록: ${bestFloor}층` : "최고기록: 없음";
     }
 
-    // 8. 즐겨찾기 상태 업데이트
     updateFavoriteBtnState(basic.character_name);
 }
 
-// 🌟 무릉, 어빌리티, 심볼 등의 상세 정보를 렌더링합니다.
 function renderSearchDetail(basic, stat, item, ability, symbol, dojang) {
     currentSearchData = { basic, stat, item, ability, symbol, dojang }; 
+    
     renderSearchSummary(basic, stat, dojang);
     
     const symbolBox = document.getElementById('res_symbol_info');
@@ -396,14 +401,12 @@ function renderSearchDetail(basic, stat, item, ability, symbol, dojang) {
             <div>
                 <div style="font-size:13px; font-weight:900; color:#8b5cf6; margin-bottom:10px; display:flex; align-items:center; gap:5px;">🔮 아케인 심볼</div>
                 ${arc.length > 0 ? renderSymbol(arc) : '<div style="color:#94a3b8; font-size:11px; padding-left:4px;">착용 중인 심볼 없음</div>'}
-            </div>
-        `;
+            </div>`;
     }
     
-    switchAbilityPreset(1);
-    switchAbilityPreset(1); // 오타 방지용 (중복 호출되어도 안전합니다)
-    switchItemPreset(1);
-    showDetailTab('equip');
+    switchAbilityPreset(1); 
+    switchItemPreset(1);    
+    showDetailTab('equip'); 
 }
 
 // ============================================================================
@@ -604,7 +607,7 @@ function loadBossPreset(num) {
 window.addEventListener('DOMContentLoaded', () => { setTimeout(renderBossPresets, 200); });
 
 // ============================================================================
-// 🕒 타이머, 도핑, 데이터 처리 기능 (사냥 기록)
+// 🕒 타이머, 도핑, 데이터 처리 기능
 // ============================================================================
 function startTimer() { if (!timerId) { endTime = Date.now() + (timeLeft * 1000); timerId = setInterval(() => { timeLeft = Math.round((endTime - Date.now()) / 1000); if (timeLeft <= 0) { timeLeft = 0; stopTimer(); updateTD(); alert("📢 30분 소재 종료!"); timeLeft = 1800; } updateTD(); }, 1000); isPaused = false; updateTimerButtons(); } }
 function stopOrResumeTimer() { if (timerId) { clearInterval(timerId); timerId = null; isPaused = true; } else if (isPaused) { startTimer(); } updateTimerButtons(); }
@@ -849,7 +852,7 @@ function markAttendance() {
 window.addEventListener('DOMContentLoaded', () => { setTimeout(renderAttendance, 100); });
 
 // ============================================================================
-// 📸 이미지 스캔(OCR) 연동 (사냥 인식 / 경매장 인식)
+// 📸 이미지 스캔(OCR) 연동
 // ============================================================================
 function setOcrMode(mode) {
     currentOcrMode = mode;
@@ -1049,7 +1052,7 @@ function generateInGameTooltipHtml(item, slotName) {
 }
 
 // ============================================================================
-// 🛠️ 툴팁 화면 표시 시스템 (화면 흔들림 및 겹침 방지 적용)
+// 🛠️ 툴팁 화면 표시 시스템
 // ============================================================================
 
 function getOrCreateTooltip() {
@@ -1079,107 +1082,136 @@ function showBuilderItemTooltip(event, slotName) {
     showTooltip(slotName, num); 
 }
 
-function moveTooltip(e) {
-    const tt = document.getElementById('itemTooltip');
-    if (!tt || tt.style.display === 'none') return;
-    let x = e.clientX + 15, y = e.clientY + 15;
-    if (x + 300 > window.innerWidth) x = e.clientX - 310;
-    if (y + 400 > window.innerHeight) y = e.clientY - 410;
-    tt.style.left = x + 'px'; tt.style.top = y + 'px';
+function moveTooltip(event) {
+    const tooltip = document.getElementById('itemTooltip');
+    
+    if (tooltip && tooltip.style.display === 'block') {
+        const gapX = 15; 
+        const gapY = 15; 
+
+        let posX = event.clientX + gapX;
+        let posY = event.clientY + gapY;
+
+        if (posX + tooltip.offsetWidth > window.innerWidth) {
+            posX = event.clientX - tooltip.offsetWidth - 20;
+        }
+
+        if (posY + tooltip.offsetHeight > window.innerHeight) {
+            posY = window.innerHeight - tooltip.offsetHeight - 10;
+        }
+
+        tooltip.style.left = posX + 'px';
+        tooltip.style.top = posY + 'px';
+    }
 }
 
 function hideTooltip() { const tt = document.getElementById('itemTooltip'); if (tt) tt.style.display = 'none'; }
 
-// ============================================================================
-// 🔄 [핵심 수정 완료] 장비 프리셋 변경 (전투력 + 슬롯 + 상세 리스트 완벽 연동)
-// ============================================================================
-/**
- * 초보자 가이드: 사용자가 프리셋 버튼(1번, 2번 등)을 누르면 동작하는 핵심 함수입니다.
- * 콤마(,)가 포함된 숫자를 제대로 계산하도록 로직을 수정했고, 
- * HTML에서 어떤 ID를 사용하더라도 알아서 찾아가도록 방어 코드를 작성했습니다.
- */
+
+// 🔄 장비 프리셋 변경 (슬롯 사라짐 현상 해결 + 2열 레이아웃 완벽판)
 function switchItemPreset(num) {
-    // [1] 클릭한 버튼에 불 들어오게 하기
+    // [1] 버튼 활성화 스타일 업데이트
     document.querySelectorAll('#itemPresetBtns .preset-btn').forEach((btn, i) => {
         btn.classList.toggle('active', i + 1 === num);
     });
 
-    if (!currentSearchData || !currentSearchData.stat || !currentSearchData.item) return;
+    if (!currentSearchData || !currentSearchData.item) return;
 
-    const statData = currentSearchData.stat;
     const itemData = currentSearchData.item;
-
-    // [2] 프리셋 아이템 리스트 설정
     let equipList = itemData[`item_equipment_preset_${num}`] || itemData.item_equipment;
 
+    // [2] 슬롯과 리스트를 그릴 부모 컨테이너 찾기
+    const listGrid = document.getElementById('res_itemGrid') || document.getElementById('res_equipDetailList');
+    // 전투력 수치가 적혀있던 왼쪽 영역을 찾습니다.
+    let slotBox = document.getElementById('res_equip_slot_grid'); 
+    
+    // 🛑 [중요] 슬롯 박스가 없으면 새로 만들어줍니다.
+    if (!slotBox) {
+        const powerNode = document.getElementById('res_power');
+        if (powerNode) {
+            const parent = powerNode.parentElement;
+            // 기존에 남아있던 텍스트나 찌꺼기를 지우고 그리드 생성
+            parent.innerHTML = ''; 
+            slotBox = document.createElement('div');
+            slotBox.id = 'res_equip_slot_grid';
+            parent.appendChild(slotBox);
+        }
+    }
 
+    // [3] 슬롯 그리드 스타일 설정 (5x5 형태)
+    if (slotBox) {
+        slotBox.style.cssText = "display:grid !important; grid-template-columns:repeat(5, 1fr) !important; gap:8px; padding:15px; background:#f8fafc; border-radius:12px; border:1px solid #edf2f7; width: 100%; box-sizing: border-box; margin-bottom: 20px;";
+    }
 
-    // [4] 출력 영역 설정 (왼쪽 5x5 슬롯 & 중앙 상세 리스트)
-    const slotBox = document.getElementById('res_power'); // 좌측 5x5 영역 ID
-    const listGrid = document.getElementById('res_itemGrid'); // 중앙 상세 리스트 영역 ID
-
-    const gradeColor = { "레전드리": "#15803d", "유니크": "#b45309", "에픽": "#6b21a8", "레어": "#0369a1" };
     const borderGradeColor = { "레전드리": "#bbf7d0", "유니크": "#fde68a", "에픽": "#e9d5ff", "레어": "#bae6fd" };
+    const gradeColor = { "레전드리": "#15803d", "유니크": "#b45309", "에픽": "#6b21a8", "레어": "#0369a1" };
+    
     const slotOrder = ["반지4", "펜던트2", "모자", "얼굴장식", "뱃지", "반지3", "펜던트", "눈장식", "귀고리", "엠블렘", "반지2", "무기", "상의", "어깨장식", "훈장", "반지1", "벨트", "하의", "장갑", "보조무기", "포켓 아이템", "안드로이드", "신발", "망토", "기계 심장"];
 
-    // [5] 좌측 5x5 장비 슬롯 그리드 렌더링
+    const shortPot = (txt) => {
+        if (!txt) return "";
+        return txt.replace("보스 몬스터 공격 시 데미지", "보공").replace("보스 몬스터 데미지", "보공").replace("몬스터 방어율 무시", "방무").replace("크리티컬 데미지", "크뎀").replace("아이템 드롭률", "아획").replace("메소 획득량", "메획").replace("최대 HP", "HP").replace(" : ", ":");
+    };
+
+    // [4] 5x5 그리드에 아이콘 채우기
     if (slotBox && equipList) {
-        let gHtml = `
-        <div style="font-size: 13px; font-weight: 800; color: #475569; margin-bottom: 12px; display: flex; align-items: center; gap: 5px;">
-            <span style="font-size: 14px;">⚔️</span> 장비 슬롯
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;">`;
-        
+        let gHtml = `<div style="grid-column: span 5; font-size: 13px; font-weight: 800; color: #475569; margin-bottom: 8px; text-align:center;">⚔️ 장비 슬롯</div>`;
         slotOrder.forEach(sName => {
-            let item = equipList.find(eq => eq.item_equipment_slot === sName || (sName === "상의" && eq.item_equipment_slot === "한벌옷"));
+            let item = equipList.find(eq => eq.item_equipment_slot === sName || (sName === "상의" && eq.item_equipment_slot === "한벌옷") || (sName === "펜던트1" && eq.item_equipment_slot === "펜던트") || (sName === "뱃지" && eq.item_equipment_slot === "배지"));
             if (item) {
                 let bColor = borderGradeColor[item.potential_option_grade] || "#e2e8f0";
-                gHtml += `<div onmouseenter="showTooltip('${sName}', ${num})" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" style="background: white; border-radius: 6px; border: 1px solid ${bColor}; display: flex; align-items: center; justify-content: center; aspect-ratio: 1/1; cursor: pointer;"><img src="${item.item_icon}" style="width: 75%;"></div>`;
+                gHtml += `
+                <div onmouseenter="showTooltip('${sName}', ${num})" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" 
+                     style="background:white; border-radius:8px; border:1px solid ${bColor}; display:flex; align-items:center; justify-content:center; aspect-ratio:1/1; cursor:pointer; overflow:hidden;">
+                    <img src="${item.item_icon}" style="max-width:85%; max-height:85%; object-fit:contain; pointer-events:none;">
+                </div>`;
             } else {
-                gHtml += `<div style="background: #f1f5f9; border-radius: 6px; border: 1px dashed #cbd5e1; aspect-ratio: 1/1;"></div>`;
+                gHtml += `<div style="background:#f1f5f9; border-radius:6px; border:1px dashed #cbd5e1; aspect-ratio:1/1;"></div>`;
             }
         });
-        gHtml += `</div>`;
         slotBox.innerHTML = gHtml;
     }
 
-    // [6] 중앙 상세 아이템 리스트 렌더링
+    // [5] 하단 상세 2열 리스트 채우기
     if (listGrid && equipList) {
-        const shortPot = (txt) => {
-            if (!txt) return "";
-            return txt.replace("보스 몬스터 공격 시 데미지", "보공").replace("보스 몬스터 데미지", "보공").replace("몬스터 방어율 무시", "방무").replace("크리티컬 데미지", "크뎀").replace("아이템 드롭률", "아획").replace("메소 획득량", "메획").replace("최대 HP", "HP").replace(" : ", ":");
-        };
-
-        let listHtml = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; width: 100%;">`;
+        let listHtml = `<div style="display:grid !important; grid-template-columns: repeat(2, 1fr) !important; gap:12px; width:100%; box-sizing: border-box; clear: both;">`;
         
         equipList.forEach(item => {
             let bColor = borderGradeColor[item.potential_option_grade] || "#cbd5e1";
             let starHtml = (parseInt(item.starforce) > 0) ? `<span style="color:#d97706; font-size:11px; font-weight:900; margin-left:5px;">★${item.starforce}</span>` : '';
-            let potStr = "";
             
+            let potStr = "";
             const renderOptions = (grade, opt1, opt2, opt3) => {
-                if (!grade) return;
+                if (!grade) return "";
                 let options = [opt1, opt2, opt3].filter(Boolean).map(shortPot).join(' / ');
-                potStr += `<div style="color:${gradeColor[grade]}; font-size:11px; font-weight:700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; width: 100%;">
-                    <span style="font-size: 10px; background: #f1f5f9; padding: 0 3px; border-radius: 3px; margin-right: 4px; border: 1px solid ${gradeColor[grade]}22;">${grade.charAt(0)}</span>${options}</div>`;
+                let color = gradeColor[grade] || "#475569";
+                return `<div style="color:${color}; font-size:11px; font-weight:700; margin-top:3px; word-break:break-all; white-space:normal; line-height:1.4;">
+                            <span style="font-size:9px; background:#f1f5f9; padding:0 3px; border-radius:3px; margin-right:4px; border:1px solid ${color}33; display:inline-block; vertical-align:middle;">${grade.charAt(0)}</span>
+                            <span style="vertical-align:middle;">${options}</span>
+                        </div>`;
             };
             
-            renderOptions(item.potential_option_grade, item.potential_option_1, item.potential_option_2, item.potential_option_3);
-            renderOptions(item.additional_potential_option_grade, item.additional_potential_option_1, item.additional_potential_option_2, item.additional_potential_option_3);
+            potStr += renderOptions(item.potential_option_grade, item.potential_option_1, item.potential_option_2, item.potential_option_3);
+            potStr += renderOptions(item.additional_potential_option_grade, item.additional_potential_option_1, item.additional_potential_option_2, item.additional_potential_option_3);
 
             listHtml += `
-            <div onmouseenter="showTooltip('${item.item_equipment_slot}', ${num})" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()" style="background: #ffffff; border: 1px solid ${bColor}; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.1s; box-shadow: 0 1px 2px rgba(0,0,0,0.02); min-width: 0; overflow: hidden; box-sizing: border-box; width: 100%;">
-                <div style="width: 38px; height: 38px; flex-shrink: 0; background: #f8fafc; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0;"><img src="${item.item_icon}" style="max-width: 80%; max-height: 80%;"></div>
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; width: 100%;">
-                    <div style="font-weight: 800; font-size: 12px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${item.item_name}${starHtml}</div>
+            <div onmouseenter="showTooltip('${item.item_equipment_slot}', ${num})" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"
+                 style="background:#fff; border:1px solid ${bColor}; border-radius:8px; padding:10px; display:flex; align-items:center; gap:10px; box-shadow:0 1px 2px rgba(0,0,0,0.02); cursor:pointer;">
+                <div style="width:38px; height:38px; flex-shrink:0; background:#f8fafc; border-radius:6px; display:flex; align-items:center; justify-content:center; border:1px solid #e2e8f0; overflow:hidden;">
+                    <img src="${item.item_icon}" style="max-width:85%; max-height:85%; object-fit:contain;">
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-weight:800; font-size:12px; color:#1e293b; margin-bottom:2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${item.item_name}${starHtml}
+                    </div>
                     ${potStr}
                 </div>
             </div>`;
         });
-        listHtml += `</div>`;
-        listGrid.innerHTML = listHtml;
+        listGrid.innerHTML = listHtml + `</div>`;
     }
 }
+
 
 // ============================================================================
 // ⚔️ 어빌리티 프리셋 기능
@@ -1223,8 +1255,47 @@ function switchAbilityPreset(num) {
 }
 
 // ============================================================================
-// 🛠️ OMNI BUILDER: 템셋팅 시뮬레이터
+// 🛠️ OMNI BUILDER: 템셋팅 시뮬레이터 (직업군 로직 추가됨)
 // ============================================================================
+
+// 🔄 직업군 선택 시 아이템 목록 갈아끼우기
+function updateBuilderItemList() {
+    const jobGroup = document.getElementById('builder_job_group').value;
+    const itemSelect = document.getElementById('edit_base_item');
+    if(!itemSelect) return;
+    
+    itemSelect.innerHTML = '<option value="none">아이템 선택</option>';
+    
+    if (jobGroup !== "none" && OMNI_ITEM_DB[jobGroup]) {
+        const items = OMNI_ITEM_DB[jobGroup];
+        for (let key in items) {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = items[key].name;
+            itemSelect.appendChild(opt);
+        }
+    }
+}
+
+// 🖼️ 선택한 아이템에 맞춰 이미지와 제목 업데이트
+function updateBuilderPreview() {
+    const jobGroup = document.getElementById('builder_job_group')?.value;
+    const setKey = document.getElementById('edit_base_item')?.value;
+    const iconContainer = document.getElementById('edit_item_icon');
+    const titleContainer = document.getElementById('edit_slot_name');
+
+    if (!iconContainer || !titleContainer) return;
+
+    if (setKey === "none" || jobGroup === "none" || !OMNI_ITEM_DB[jobGroup] || !OMNI_ITEM_DB[jobGroup][setKey]) {
+        iconContainer.innerHTML = '🖱️';
+        iconContainer.style.fontSize = '24px';
+        return;
+    }
+
+    const itemInfo = OMNI_ITEM_DB[jobGroup][setKey];
+    iconContainer.innerHTML = `<img src="${itemInfo.img}" style="max-width:85%; max-height:85%; object-fit:contain;">`;
+    titleContainer.textContent = itemInfo.name;
+}
 
 const MAPLE_SLOT_NAMES = [
     "반지1", "눈장식", null, "모자", "망토",
@@ -1334,7 +1405,8 @@ function selectBuilderSlot(index) {
         if (itemIcon) {
             iconBox.innerHTML = `<img src="${itemIcon}" style="width: 70%; height: 70%; object-fit: contain;">`;
         } else {
-            iconBox.innerHTML = '';
+            iconBox.innerHTML = '🖱️';
+            iconBox.style.fontSize = '24px';
         }
     }
 }
@@ -1418,10 +1490,6 @@ function syncEquipToBuilder(presetNum = 1) {
 // ============================================================================
 // 🚀 앱 UI 초기화 (DOM 동적 생성)
 // ============================================================================
-/**
- * 초보자 가이드: 웹페이지가 처음 로드될 때 캐릭터 사냥 기록지 탭들을 그려주는 핵심 함수입니다.
- * 도핑 체크리스트가 상세 스탯 설정창 바로 아래에 안전하게 위치합니다.
- */
 function init() {
     const container = document.getElementById('charContents'), tabList = document.getElementById('tabContainer'), histTabList = document.getElementById('historyTabContainer');
     if(!container) return;
@@ -1473,7 +1541,7 @@ function openMiniPopup() {
     const w = 300, h = 480, popup = window.open("", "MapleMini", `width=${w},height=${h},left=${window.screen.width - w - 20},top=20,scrollbars=no,resizable=yes`);
     if (!popup) return alert("⚠️ 팝업 차단이 감지되었습니다!");
     let optionsHTML = '<option value="" disabled selected>👤 캐릭터 선택</option>'; document.querySelectorAll('.tab-btn').forEach((tab, index) => { const nameInput = document.getElementById('nameInput_' + (index + 1)); optionsHTML += `<option value="${index + 1}">${nameInput ? nameInput.value : '캐릭터 ' + (index + 1)}</option>`; });
-    popup.document.open(); popup.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사냥 리모컨</title><style>body { font-family: "Pretendard", sans-serif; padding: 10px; background: #f1f2f6; margin: 0; overflow: hidden; }.mini-card { background: #1a1a2e; padding: 12px; border-radius: 15px; color: #fff; text-align: center; border: 1px solid #c9a55c; margin-bottom: 10px; }.timer-text { font-size: 32px; font-weight: 900; color: #ffd700; margin-bottom: 5px; font-family: monospace; }.btn-timer { background: rgba(255,215,0,0.1); border: 1px solid #ffd700; color: #ffd700; padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; margin: 0 2px; }#char_select { width: 100%; margin-top: 10px; background: #2d3436; color: white; border: 1px solid #555; border-radius: 5px; padding: 4px; font-size: 12px; }.input-grid { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }.row { display: flex; gap: 5px; margin-bottom: 8px; }.field { flex: 1; }.field label { display: block; font-size: 10px; color: #777; font-weight: bold; margin-bottom: 2px; }.field input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; text-align: center; box-sizing: border-box; outline: none; }.field input:focus { border-color: #6c5ce7; }.btn-record { width: 100%; padding: 12px; background: #6c5ce7; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 5px; }.btn-clear { width: 100%; padding: 6px; background: none; color: #ff7675; border: 1px solid #ff7675; border-radius: 8px; font-size: 11px; cursor: pointer; margin-top: 8px; }</style></head><body><div class="mini-card"><div class="timer-text" id="w_timer">00:00</div><div><button class="btn-timer" onclick="window.opener.startTimer()">▶ 재생</button><button class="btn-timer" onclick="window.opener.stopOrResumeTimer()">⏸ 정지</button><button class="btn-timer" onclick="window.opener.resetTimer()">🔄 리셋</button></div><select id="char_select" onchange="loadChar(this.value)">${optionsHTML}</select></div><div id="w_content" style="text-align:center; font-size:11px; color:#999; margin-top:30px;">캐릭터를 선택해 주세요 🍁</div><script>let activeIdx = null; setInterval(() => { if (!window.opener) return; const mainT = window.opener.document.getElementById("timerDisplay"); if (mainT) document.getElementById("w_timer").innerText = mainT.innerText; }, 500); function syncToMain(field, value) { if (!activeIdx || !window.opener) return; const target = window.opener.document.getElementById(field + "_" + activeIdx); if (target) { target.value = value; window.opener.updateAll(activeIdx); } } function loadChar(idx) { activeIdx = idx; const op = window.opener, mapV = op.document.getElementById("map_" + idx).value, mesoV = op.document.getElementById("meso_" + idx).value, expV = op.document.getElementById("exp_" + idx).value, gemV = op.document.getElementById("gem_" + idx).value, fragV = op.document.getElementById("frag_" + idx).value; document.getElementById("w_content").innerHTML = \'<div class="input-grid"><div class="row"><div class="field"><label>📍 사냥터</label><input type="text" value="\' + mapV + \'" oninput="syncToMain(\\\'map\\\', this.value)"></div></div><div class="row"><div class="field"><label>💰 현재 메소</label><input type="text" value="\' + mesoV + \'" oninput="window.opener.onMeso(this); syncToMain(\\\'meso\\\', this.value)"></div><div class="field"><label>📈 현재 경험치</label><input type="number" value="\' + expV + \'" step="0.001" oninput="syncToMain(\\\'exp\\\', this.value)"></div></div><div class="row"><div class="field"><label>💎 현재 코젬</label><input type="number" value="\' + gemV + \'" oninput="syncToMain(\\\'gem\\\', this.value)"></div><div class="field"><label>🧩 현재 조각</label><input type="number" value="\' + fragV + \'" oninput="syncToMain(\\\'frag\\\', this.value)"></div></div><button class="btn-record" onclick="record()">⏱️ 30분 소재 기록</button><button class="btn-clear" onclick="resetInputs()">🗑️ 입력칸 비우기</button></div>\'; } function record() { window.opener.recordSub(activeIdx); document.body.style.background = "#d1ffd1"; setTimeout(() => { document.body.style.background = "#f1f2f6"; loadChar(activeIdx); }, 300); } function resetInputs() { if(!confirm("초기화할까요?")) return; ["map", "meso", "exp", "gem", "frag"].forEach(id => syncToMain(id, "")); loadChar(activeIdx); }<\/script></body></html>`); popup.document.close();
+    popup.document.open(); popup.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사냥 리모컨</title><style>body { font-family: "Pretendard", sans-serif; padding: 10px; background: #f1f2f6; margin: 0; overflow: hidden; }.mini-card { background: #1a1a2e; padding: 12px; border-radius: 15px; color: #fff; text-align: center; border: 1px solid #c9a55c; margin-bottom: 10px; }.timer-text { font-size: 32px; font-weight: 900; color: #ffd700; margin-bottom: 5px; font-family: monospace; }.btn-timer { background: rgba(255,215,0,0.1); border: 1px solid #ffd700; color: #ffd700; padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; margin: 0 2px; }#char_select { width: 100%; margin-top: 10px; background: #2d3436; color: white; border: 1px solid #555; border-radius: 5px; padding: 4px; font-size: 12px; }.input-grid { background: white; padding: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }.row { display: flex; gap: 5px; margin-bottom: 8px; }.field { flex: 1; }.field label { display: block; font-size: 10px; color: #777; font-weight: bold; margin-bottom: 2px; }.field input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; text-align: center; box-sizing: border-box; outline: none; }.field input:focus { border-color: #6c5ce7; }.btn-record { width: 100%; padding: 12px; background: #6c5ce7; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 5px; }.btn-clear { width: 100%; padding: 6px; background: none; color: #ff7675; border: 1px solid #ff7675; border-radius: 8px; font-size: 11px; cursor: pointer; margin-top: 8px; }</style></head><body><div class="mini-card"><div class="timer-text" id="w_timer">00:00</div><div><button class="btn-timer" onclick="window.opener.startTimer()">▶ 재생</button><button class="btn-timer" onclick="window.opener.stopOrResumeTimer()">⏸ 정지</button><button class="btn-timer" onclick="window.opener.resetTimer()">🔄 리셋</button></div><select id="char_select" onchange="loadChar(this.value)">${optionsHTML}</select></div><div id="w_content" style="text-align:center; font-size:11px; color:#999; margin-top:30px;">캐릭터를 선택해 주세요 🍁</div><script>let activeIdx = null; setInterval(() => { if (!window.opener) return; const mainT = window.opener.document.getElementById("timerDisplay"); if (mainT) document.getElementById("w_timer").innerText = mainT.innerText; }, 500); function syncToMain(field, value) { if (!activeIdx || !window.opener) return; const target = window.opener.document.getElementById(field + "_" + activeIdx); if (target) { target.value = value; window.opener.updateAll(activeIdx); } } function loadChar(idx) { activeIdx = idx; const op = window.opener, mapV = op.document.getElementById("map_" + idx).value, mesoV = op.document.getElementById("meso_" + idx).value, expV = op.document.getElementById("exp_" + idx).value, gemV = op.document.getElementById("gem_" + idx).value, fragV = op.document.getElementById("frag_" + idx).value; document.getElementById("w_content").innerHTML = '<div class="input-grid"><div class="row"><div class="field"><label>📍 사냥터</label><input type="text" value="' + mapV + '" oninput="syncToMain(\\'map\\', this.value)"></div></div><div class="row"><div class="field"><label>💰 현재 메소</label><input type="text" value="' + mesoV + '" oninput="window.opener.onMeso(this); syncToMain(\\'meso\\', this.value)"></div><div class="field"><label>📈 현재 경험치</label><input type="number" value="' + expV + '" step="0.001" oninput="syncToMain(\\'exp\\', this.value)"></div></div><div class="row"><div class="field"><label>💎 현재 코젬</label><input type="number" value="' + gemV + '" oninput="syncToMain(\\'gem\\', this.value)"></div><div class="field"><label>🧩 현재 조각</label><input type="number" value="' + fragV + '" oninput="syncToMain(\\'frag\\', this.value)"></div></div><button class="btn-record" onclick="record()">⏱️ 30분 소재 기록</button><button class="btn-clear" onclick="resetInputs()">🗑️ 입력칸 비우기</button></div>'; } function record() { window.opener.recordSub(activeIdx); document.body.style.background = "#d1ffd1"; setTimeout(() => { document.body.style.background = "#f1f2f6"; loadChar(activeIdx); }, 300); } function resetInputs() { if(!confirm("초기화할까요?")) return; ["map", "meso", "exp", "gem", "frag"].forEach(id => syncToMain(id, "")); loadChar(activeIdx); }<\/script></body></html>`); popup.document.close();
 }
 
 function showDetailTab(tab) { document.querySelectorAll('.detail-tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.detail-nav-btn').forEach(btn => btn.classList.remove('active')); const target = document.getElementById(`tab_content_${tab}`); if (target) target.style.display = 'block'; }
