@@ -1,0 +1,230 @@
+/* ============================================================
+   🍁 MAPLE OMNI - 1. 공통 뼈대 (base.css)
+   전역 변수, 레이아웃, 사이드바, 네비게이션, 공통 애니메이션
+   ============================================================ */
+
+:root { 
+    --primary: #2d3436;     /* 메인 글자색 (진한 회색) */
+    --accent: #ff9100;      /* 강조 오렌지 색상 */
+    --bg: #f8f9fa;          /* 전체 배경 (밝은 연회색) */
+    --card: #ffffff;        /* 카드 및 상자 배경 (순백색) */
+    --border: #dfe6e9;      /* 테두리 색상 */
+    --text: #2d3436;        /* 기본 본문 글자색 */
+    --warn: #ff5252;        /* 경고/주의 빨간색 */
+    --blue: #3498db;        /* 포인트 파란색 */
+    --green: #2ecc71;       /* 완료 초록색 */
+    --doping-bg: #fff9f0;   /* 도핑 구역 배경 */
+    --doping-border: #ffeaa7; /* 도핑 구역 테두리 */
+    --purple: #a29bfe;      /* 타이머 및 포인트 보라색 */
+}
+
+body { 
+    font-family: 'Pretendard', sans-serif; 
+    background: var(--bg); 
+    margin: 0; padding: 10px; 
+    color: var(--text); font-size: 12px; 
+    display: flex; justify-content: center; gap: 20px; 
+}
+
+.container { flex-grow: 1; max-width: 1000px; } 
+
+/* 레이아웃 & 카드 */
+.sidebar, .right-sidebar { 
+    flex-shrink: 0; position: sticky; 
+    top: 20px; margin-top: 145px; height: fit-content !important; 
+}
+.sidebar { width: 240px; }
+.right-sidebar { width: 220px; }
+
+.char-card, .goal-container, .stat-card, .config-area, .sell-section, .sub-item, .summary-card, .attendance-card { 
+    background-color: var(--card) !important; 
+    border: 1px solid var(--border) !important; 
+    border-radius: 15px; 
+}
+
+.char-card {
+    border-radius: 20px; padding: 25px 20px; text-align: center; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important; margin-bottom: 15px; 
+}
+
+/* 깔끔한 배경을 위한 그리드/라인 제거 설정 적용 */
+.char-img-box { 
+    width: 140px; height: 140px; 
+    background: #f1f2f6 !important; /* 그라데이션 제거, 깔끔한 단색 처리 */
+    border-radius: 50%; margin: 0 auto 15px; 
+    display: flex; align-items: center; justify-content: center; 
+    overflow: hidden; border: 4px solid white !important; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; 
+}
+.char-img { width: 100%; height: auto; transform: scale(2.3) translate(3px, -5px); transform-origin: center center; }
+
+.char-info h3 { color: var(--primary) !important; }
+.char-info p { margin: 3px 0; color: #636e72 !important; font-weight: bold; font-size: 13px; }
+#profileWorld { color: var(--accent) !important; font-weight: 800 !important; }
+
+#statBox { 
+    background: rgba(0,0,0,0.03) !important; border: 1px solid var(--border) !important; 
+    padding: 12px 10px; border-radius: 10px; font-size: 11px; text-align: left; margin-top: 15px; 
+}
+#statBox span { color: #636e72 !important; }
+#statBox b { color: var(--primary) !important; }
+
+/* 헤더 & 네비게이션 */
+header { text-align: center; padding: 10px 0; }
+header h1 { font-size: 26px; color: var(--accent); margin: 0; font-weight: 900; }
+
+nav { 
+    display: flex; justify-content: center; gap: 5px; margin-bottom: 20px; 
+    background-color: var(--card) !important; padding: 5px; 
+    border-radius: 15px; border: 1px solid var(--border) !important; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; 
+}
+.nav-btn { 
+    flex: 1; padding: 12px; border: none; background: transparent; 
+    cursor: pointer; font-weight: bold; border-radius: 10px; 
+    transition: 0.2s; color: #b2bec3 !important; font-size: 14px; 
+}
+.nav-btn.active, .nav-btn[class*="active"] { 
+    background-color: var(--accent) !important; color: white !important; 
+    box-shadow: 0 4px 10px rgba(255, 145, 0, 0.3) !important; 
+}
+
+/* 툴팁 (화면 찌그러짐 방지 적용) */
+#itemTooltip {
+    position: fixed !important; z-index: 99999; pointer-events: none; 
+    contain: layout; will-change: transform; top: 0; left: 0;
+}
+
+/* 공통 애니메이션 */
+.modal-overlay { animation: modalFadeIn 0.2s ease-out; }
+@keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+#charDetailContainer > div { animation: fadeInSlide 0.5s ease forwards; }
+@keyframes fadeInSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 모바일 뼈대 */
+@media (max-width: 768px) {
+    body { padding: 10px; font-size: 14px; flex-direction: column; }
+    .sidebar, .right-sidebar { width: 100%; position: static; margin-top: 10px; }
+}
+
+
+
+/* 기존 로더 애니메이션들 */
+.loader-circle {
+    position: absolute; top: 0; left: 0;
+    width: 100px; height: 100px;
+    border: 3px solid transparent;
+    border-top: 3px solid #ff9100;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+.loader-bar {
+    width: 0%; height: 100%;
+    background: #cbd5e1;
+    animation: loadingBar 2s ease-in-out infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes loadingBar { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
+/* 💡 단풍잎 두근거림 애니메이션 */
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+
+/* ------------------------------------------------------------
+   📍 장비 슬롯 그리드 위치 및 크기 교정
+   ------------------------------------------------------------ */
+
+/* 1. 하얀 상자 안의 실제 그리드 영역 */
+#res_equip_slot_grid {
+    display: grid !important;
+    /* 💡 무조건 5열로 나누고, 한 칸이 부모를 절대 못 넘게 함 */
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important; 
+    gap: 8px !important;      /* 칸 사이 간격 */
+    width: 100% !important;   /* 부모 너비에 맞춤 */
+    max-width: 280px;         /* 너무 커져서 삐져나가는 것 방지 */
+    margin: 0 auto !important; /* 부모 상자 안에서 중앙 정렬 */
+}
+
+/* 2. 그리드 안의 개별 슬롯(칸) */
+#res_equip_slot_grid > div {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important; /* 무조건 정사각형 유지 */
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+
+/* 3. 슬롯 안의 아이템 이미지 */
+#res_equip_slot_grid img {
+    width: 90% !important;
+    height: 90% !important;
+    object-fit: contain;
+}
+
+/* ------------------------------------------------------------
+   🔍 OMNI SCANNER 전용 스타일
+   ------------------------------------------------------------ */
+
+/* 버튼들이 담긴 메뉴 바 정렬 */
+#detailTabMenu {
+    display: flex !important;
+    justify-content: left;
+    gap: 5px;
+    margin-bottom: 20px;
+    align-items: stretch; /* 💡 모든 버튼의 높이를 자동으로 통일함 */
+}
+
+/* 스캐너 버튼 특별 스타일 (원본 nav-btn 속성 상속) */
+.nav-btn.scanner-btn {
+    background: var(--accent) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(255, 145, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.nav-btn.scanner-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+
+/* 💡 자바스크립트가 display를 바꿔도 왼쪽 정렬을 유지하게 함 */
+#detailTabMenu {
+    display: none; 
+    justify-content: flex-start !important; 
+    align-items: center !important; 
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+/* 💡 버튼들이 혼자서 커지지 않도록 크기 고정 */
+.nav-btn {
+    flex: 0 0 auto !important; 
+    padding: 10px 15px !important;
+    height: auto !important;
+}
+
+/* 🔍 스캐너 버튼 전용 새로운 강조색 (활성화 버튼과 구분) */
+.nav-btn.scanner-btn {
+    background: #6c5ce7 !important; /* 선명한 보라색 계열로 변경 */
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3) !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.nav-btn.scanner-btn:hover {
+    background: #a29bfe !important; /* 호버 시 밝은 보라색 */
+    transform: translateY(-1px);
+}
