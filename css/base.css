@@ -1,0 +1,318 @@
+/* ============================================================
+   🍁 MAPLE OMNI - 1. 공통 뼈대 (base.css)
+   전역 변수, 레이아웃, 사이드바, 네비게이션, 공통 애니메이션
+   ============================================================ */
+
+:root { 
+    --primary: #2d3436;     /* 메인 글자색 (진한 회색) */
+    --accent: #ff9100;      /* 강조 오렌지 색상 */
+    --bg: #f8f9fa;          /* 전체 배경 (밝은 연회색) */
+    --card: #ffffff;        /* 카드 및 상자 배경 (순백색) */
+    --border: #dfe6e9;      /* 테두리 색상 */
+    --text: #2d3436;        /* 기본 본문 글자색 */
+    --warn: #ff5252;        /* 경고/주의 빨간색 */
+    --blue: #3498db;        /* 포인트 파란색 */
+    --green: #2ecc71;       /* 완료 초록색 */
+    --doping-bg: #fff9f0;   /* 도핑 구역 배경 */
+    --doping-border: #ffeaa7; /* 도핑 구역 테두리 */
+    --purple: #a29bfe;      /* 타이머 및 포인트 보라색 */
+}
+
+body { 
+    font-family: 'Pretendard', sans-serif; 
+    background: var(--bg); 
+    margin: 0; padding: 10px; 
+    color: var(--text); font-size: 12px; 
+    display: flex; justify-content: center; gap: 20px; 
+}
+
+.container { flex-grow: 1; max-width: 1000px; } 
+
+/* ------------------------------------------------------------
+   레이아웃 & 카드
+   ------------------------------------------------------------ */
+.sidebar, .right-sidebar { 
+    flex-shrink: 0; position: sticky; 
+    top: 20px; margin-top: 145px; height: fit-content !important; 
+}
+.sidebar { width: 240px; }
+.right-sidebar { width: 220px; }
+
+.char-card, .goal-container, .stat-card, .config-area, .sell-section, .sub-item, .summary-card, .attendance-card { 
+    background-color: var(--card) !important; 
+    border: 1px solid var(--border) !important; 
+    border-radius: 15px; 
+}
+
+.char-card {
+    border-radius: 20px; padding: 25px 20px; text-align: center; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important; margin-bottom: 15px; 
+}
+
+/* 깔끔한 배경을 위한 그리드/라인 제거 설정 적용 */
+.char-img-box { 
+    width: 140px; height: 140px; 
+    background: #f1f2f6 !important; 
+    border-radius: 50%; margin: 0 auto 15px; 
+    display: flex; align-items: center; justify-content: center; 
+    overflow: hidden; border: 4px solid white !important; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; 
+}
+.char-img { width: 100%; height: auto; transform: scale(2.3) translate(3px, -5px); transform-origin: center center; }
+
+.char-info h3 { color: var(--primary) !important; }
+.char-info p { margin: 3px 0; color: #636e72 !important; font-weight: bold; font-size: 13px; }
+#profileWorld { color: var(--accent) !important; font-weight: 800 !important; }
+
+#statBox { 
+    background: rgba(0,0,0,0.03) !important; border: 1px solid var(--border) !important; 
+    padding: 12px 10px; border-radius: 10px; font-size: 11px; text-align: left; margin-top: 15px; 
+}
+#statBox span { color: #636e72 !important; }
+#statBox b { color: var(--primary) !important; }
+
+/* ------------------------------------------------------------
+   헤더 & 네비게이션 (슬림 와이드 버전)
+   ------------------------------------------------------------ */
+header { 
+    text-align: center; 
+    padding: 20px 0 5px; 
+}
+
+nav { 
+    display: flex; 
+    justify-content: center; 
+    gap: 40px;               /* 🔥 버튼 사이 간격은 시원하게 유지 */
+    margin: 0 auto 25px;     
+    background-color: var(--card) !important; 
+    padding: 10px 40px;      /* 🔥 상하 패딩을 줄여서 두께를 슬림하게! */
+    border-radius: 15px;     
+    border: 1px solid var(--border) !important; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important; 
+    
+    /* 본문 넓이와 맞추기 */
+    width: 100% !important;   
+    max-width: 1000px;       
+    box-sizing: border-box;  
+}
+
+/* 네비게이션 버튼 디자인 (더 작고 깔끔하게) */
+.nav-btn { 
+    flex: 0 0 auto !important; 
+    padding: 8px 15px !important; /* 🔥 버튼 크기를 아담하게 축소 */
+    height: auto !important;
+    border: none; 
+    background: transparent; 
+    cursor: pointer; 
+    font-weight: 700;       
+    border-radius: 10px; 
+    transition: all 0.2s ease; 
+    color: #b2bec3 !important; 
+    font-size: 13px;        /* 🔥 글자 크기를 다시 13px로 조절 */
+    display: flex;
+    align-items: center;
+    gap: 6px;              
+}
+
+/* 호버 및 액티브 효과 */
+.nav-btn:hover {
+    color: var(--accent) !important;
+    transform: translateY(-1px); /* 살짝만 들리게 */
+}
+
+.nav-btn.active, .nav-btn[class*="active"] { 
+    background-color: var(--accent) !important; 
+    color: white !important; 
+    box-shadow: 0 3px 10px rgba(255, 145, 0, 0.3) !important; 
+}
+
+/* ------------------------------------------------------------
+   상세 탭 메뉴 & OMNI SCANNER 전용 스타일
+   ------------------------------------------------------------ */
+#detailTabMenu {
+    display: none; /* 자바스크립트가 정보를 불러오면 flex로 바꿈 */
+    justify-content: flex-start !important; /* 왼쪽 정렬 유지 */
+    align-items: center !important; 
+    gap: 8px !important;
+    width: 100% !important;
+    margin-bottom: 20px;
+}
+
+/* 스캐너 전용 강조 보라색 버튼 */
+.nav-btn.scanner-btn {
+    background: #6c5ce7 !important; 
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3) !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.nav-btn.scanner-btn:hover {
+    background: #a29bfe !important; 
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+}
+
+/* ------------------------------------------------------------
+   장비 슬롯 그리드 위치 및 크기 교정
+   ------------------------------------------------------------ */
+#res_equip_slot_grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important; 
+    gap: 8px !important;      
+    width: 100% !important;   
+    max-width: 280px;         
+    margin: 0 auto !important; 
+}
+
+#res_equip_slot_grid > div {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important; 
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+
+#res_equip_slot_grid img {
+    width: 90% !important;
+    height: 90% !important;
+    object-fit: contain;
+}
+
+/* ------------------------------------------------------------
+   툴팁 & 공통 애니메이션
+   ------------------------------------------------------------ */
+#itemTooltip {
+    position: fixed !important; z-index: 99999; pointer-events: none; 
+    contain: layout; will-change: transform; top: 0; left: 0;
+}
+
+.modal-overlay { animation: modalFadeIn 0.2s ease-out; }
+@keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+#charDetailContainer > div { animation: fadeInSlide 0.5s ease forwards; }
+@keyframes fadeInSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.loader-circle {
+    position: absolute; top: 0; left: 0;
+    width: 100px; height: 100px;
+    border: 3px solid transparent;
+    border-top: 3px solid #ff9100;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loader-bar {
+    width: 0%; height: 100%;
+    background: #cbd5e1;
+    animation: loadingBar 2s ease-in-out infinite;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes loadingBar { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* ------------------------------------------------------------
+   모바일 최적화 뼈대
+   ------------------------------------------------------------ */
+@media (max-width: 768px) {
+    body { padding: 10px; font-size: 14px; flex-direction: column; }
+    .sidebar, .right-sidebar { width: 100%; position: static; margin-top: 10px; }
+}
+
+
+
+/* ------------------------------------------------------------
+   📅 MAPLE OMNI - 콤팩트 캘린더 (AI 최적화 디자인)
+   ------------------------------------------------------------ */
+
+/* 1. 부모 배경 카드: 세로 길이를 줄이고 슬림하게 최적화 */
+.attendance-card { 
+    padding: 15px 12px !important; /* 🔥 상하 여백을 줄여 콤팩트하게 */
+    width: 100% !important; 
+    max-width: 240px;            /* 🔥 사이드바 가로 폭에 딱 맞게 조정 */
+    box-sizing: border-box !important; 
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 15px;
+}
+
+/* 제목 부분도 슬림하게 */
+.attendance-card h4 {
+    font-size: 13px;
+    margin: 0 0 10px 5px !important;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* 2. 달력 그리드: 간격을 조밀하게 조정 */
+#attendanceGrid { 
+    display: grid !important; 
+    grid-template-columns: repeat(7, 1fr) !important; 
+    gap: 4px !important;         /* 🔥 조밀한 간격으로 밀도 상향 */
+    width: 100% !important; 
+}
+
+/* 3. 날짜 칸: 슬림한 둥근 사각형 (미감 극대화) */
+.calendar-day {
+    position: relative;
+    width: 100% !important;
+    height: 28px !important;     /* 🔥 높이를 대폭 줄여 슬림하게 (38px -> 28px) */
+    background: #f8fafc;         /* 기본 배경색을 살짝 주어 깔끔하게 */
+    border-radius: 6px !important; 
+    font-weight: 700;
+    color: #94a3b8;
+    transition: all 0.2s ease;
+    border: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;             /* 작은 칸에 맞는 폰트 크기 */
+    z-index: 1;
+}
+
+/* 🔥 사냥 완료 시 - 세련된 하이라이트 디자인 */
+.calendar-day.active {
+    background: var(--accent) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 2px 5px rgba(255, 145, 0, 0.2);
+}
+
+/* 🏷️ 완료 시 하단 포인트 (글자 대신 작은 점으로 대체해서 콤팩트함 유지) */
+.calendar-day.active::after {
+    content: ""; 
+    position: absolute;
+    bottom: 3px;
+    width: 3px;
+    height: 3px;
+    background: #ffffff;
+    border-radius: 50%;
+}
+
+/* 오늘 날짜 (보라색 포인트) */
+.calendar-day.today {
+    border: 1.5px solid #6c5ce7 !important;
+    color: #6c5ce7;
+    background: #ffffff;
+}
+
+/* 요일 헤더 (더 작고 연하게) */
+.calendar-header {
+    font-size: 10px;
+    font-weight: 800;
+    color: #cbd5e1;
+    padding-bottom: 5px;
+    text-align: center;
+}
